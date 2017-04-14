@@ -3,7 +3,6 @@ package pg2mysql
 import (
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 )
 
@@ -71,7 +70,7 @@ func (t *Table) GetIncompatibleRowIDs(db DB, columns []*Column) ([]int, error) {
 	stmt := fmt.Sprintf("SELECT id FROM %s WHERE %s", t.Name, strings.Join(limits, " OR "))
 	rows, err := db.DB().Query(stmt)
 	if err != nil {
-		log.Fatalf("failed getting incompatible row ids: %s", err)
+		return nil, fmt.Errorf("failed getting incompatible row ids: %s", err)
 	}
 	defer rows.Close()
 
@@ -79,7 +78,7 @@ func (t *Table) GetIncompatibleRowIDs(db DB, columns []*Column) ([]int, error) {
 	for rows.Next() {
 		var id int
 		if err := rows.Scan(&id); err != nil {
-			log.Fatalf("failed to scan row: %s", err)
+			return nil, fmt.Errorf("failed to scan row: %s", err)
 		}
 		rowIDs = append(rowIDs, id)
 	}
@@ -158,7 +157,7 @@ func BuildSchema(db DB) (*Schema, error) {
 	}
 
 	if err := rows.Err(); err != nil {
-		log.Fatalf("failed to iterate through schema rows: %s", err)
+		return nil, fmt.Errorf("failed to iterate through schema rows: %s", err)
 	}
 
 	schema := &Schema{

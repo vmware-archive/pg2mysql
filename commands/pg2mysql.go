@@ -3,7 +3,6 @@ package commands
 import (
 	"fmt"
 	"io/ioutil"
-	"log"
 
 	"github.com/pivotal-cf/pg2mysql"
 
@@ -21,7 +20,7 @@ func (c *ConfigFilePath) UnmarshalFlag(value string) error {
 	var config pg2mysql.Config
 	err = yaml.Unmarshal(bs, &config)
 	if err != nil {
-		log.Fatalf("failed to unmarshal config: %s", err)
+		return fmt.Errorf("failed to unmarshal config: %s", err)
 	}
 
 	PG2MySQL.Config = config
