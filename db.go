@@ -10,6 +10,8 @@ type DB interface {
 	Open() error
 	Close() error
 	GetSchemaRows() (*sql.Rows, error)
+	DisableConstraints() error
+	EnableConstraints() error
 	DB() *sql.DB
 }
 
@@ -43,6 +45,14 @@ func (t *Table) GetColumn(name string) (*Column, error) {
 	}
 
 	return nil, fmt.Errorf("column '%s' not found", name)
+}
+
+func (t *Table) GetColumnNames() []string {
+	var names []string
+	for i := range t.Columns {
+		names = append(names, t.Columns[i].Name)
+	}
+	return names
 }
 
 func (t *Table) GetIncompatibleColumns(other *Table) ([]*Column, error) {

@@ -7,6 +7,8 @@ import (
 	_ "github.com/go-sql-driver/mysql" // importing mysql driver
 )
 
+var mysqlTimestampFormat = "2006-01-02 15:04:05"
+
 func NewMySQLDB(
 	database string,
 	username string,
@@ -15,7 +17,7 @@ func NewMySQLDB(
 	port int,
 ) DB {
 	return &mySQLDB{
-		dsn:    fmt.Sprintf("%s:%s@(%s:%d)/%s", username, password, host, port, database),
+		dsn:    fmt.Sprintf("%s:%s@(%s:%d)/%s?parseTime=true", username, password, host, port, database),
 		dbName: database,
 	}
 }
@@ -59,4 +61,14 @@ func (m *mySQLDB) GetSchemaRows() (*sql.Rows, error) {
 
 func (m *mySQLDB) DB() *sql.DB {
 	return m.db
+}
+
+func (m *mySQLDB) EnableConstraints() error {
+	_, err := m.db.Exec("SET FOREIGN_KEY_CHECKS = 1;")
+	return err
+}
+
+func (m *mySQLDB) DisableConstraints() error {
+	_, err := m.db.Exec("SET FOREIGN_KEY_CHECKS = 0;")
+	return err
 }

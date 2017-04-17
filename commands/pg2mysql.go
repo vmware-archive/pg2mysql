@@ -34,6 +34,7 @@ type PG2MySQLCommand struct {
 	ConfigFile ConfigFilePath `short:"c" long:"config" required:"true" description:"Path to config file"`
 
 	Validate ValidateCommand `command:"validate" description:"Validate that the data in PostgreSQL can be migrated to MySQL"`
+	Migrate  MigrateCommand  `command:"migrate" description:"Migrate data from PostgreSQL to MySQL"`
 }
 
 var PG2MySQL PG2MySQLCommand
