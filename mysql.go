@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/go-sql-driver/mysql" // register mysql driver
+	"github.com/go-sql-driver/mysql"
 )
 
 var mysqlTimestampFormat = "2006-01-02 15:04:05"
@@ -16,8 +16,21 @@ func NewMySQLDB(
 	host string,
 	port int,
 ) DB {
+	config := mysql.Config{
+		User:            username,
+		Passwd:          password,
+		DBName:          database,
+		Net:             "tcp",
+		Addr:            fmt.Sprintf("%s:%d", host, port),
+		MultiStatements: true,
+		Params: map[string]string{
+			"charset":   "utf8",
+			"parseTime": "True",
+		},
+	}
+
 	return &mySQLDB{
-		dsn:    fmt.Sprintf("%s:%s@(%s:%d)/%s?parseTime=true", username, password, host, port, database),
+		dsn:    config.FormatDSN(),
 		dbName: database,
 	}
 }
