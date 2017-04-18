@@ -16,7 +16,7 @@ against a populated PostgreSQL database and, provided the data in the
 PostgreSQL database is compatible, the migration to move the data from
 PostgreSQL to MySQL.
 
-### Install from source
+## Install from source
 
 ```
 go install github.com/pivotal-cf/pg2mysql
@@ -45,7 +45,7 @@ postgresql:
 EOF
 ```
 
-Note: See [PostgreSQL documentation](https://www.postgresql.org/docs/9.1/static/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS)
+_Note: See [PostgreSQL documentation](https://www.postgresql.org/docs/9.1/static/libpq-ssl.html#LIBPQ-SSL-SSLMODE-STATEMENTS)_
 for valid SSL mode values.
 
 Run the validator:
