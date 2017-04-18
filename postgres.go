@@ -18,7 +18,15 @@ func NewPostgreSQLDB(
 	port int,
 	sslMode string,
 ) DB {
-	dsn := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%d sslmode=%s", username, password, database, host, port, sslMode)
+	dsn := fmt.Sprintf("dbname=%s host=%s port=%d sslmode=%s", database, host, port, sslMode)
+
+	if username != "" {
+		dsn = fmt.Sprintf("%s user=%s", dsn, username)
+	}
+	if password != "" {
+		dsn = fmt.Sprintf("%s password=%s", dsn, password)
+	}
+
 	return &postgreSQLDB{
 		dsn:    dsn,
 		dbName: database,

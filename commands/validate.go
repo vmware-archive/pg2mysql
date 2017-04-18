@@ -23,11 +23,6 @@ func (c *ValidateCommand) Execute([]string) error {
 	}
 	defer mysql.Close()
 
-	mysqlSchema, err := pg2mysql.BuildSchema(mysql)
-	if err != nil {
-		return fmt.Errorf("failed to build mysql schema: %s", err)
-	}
-
 	pg := pg2mysql.NewPostgreSQLDB(
 		PG2MySQL.Config.PostgreSQL.Database,
 		PG2MySQL.Config.PostgreSQL.Username,
@@ -42,36 +37,18 @@ func (c *ValidateCommand) Execute([]string) error {
 	}
 	defer pg.Close()
 
-	pgSchema, err := pg2mysql.BuildSchema(pg)
+	results, err := pg2mysql.NewValidator(pg, mysql).Validate()
 	if err != nil {
-		return fmt.Errorf("failed to build postgres schema: %s", err)
+		return fmt.Errorf("failed to validate: %s", err)
 	}
 
-	for _, pgTable := range pgSchema.Tables {
-		mysqlTable, err := mysqlSchema.GetTable(pgTable.Name)
-		if err != nil {
-			return fmt.Errorf("failed to get table from mysql schema: %s", err)
+	for _, result := range results {
+		if len(result.IncompatibleRowIDs) > 0 {
+			fmt.Printf("found incompatible rows in %s with IDs %v\n", result.TableName, result.IncompatibleRowIDs)
+			continue
 		}
 
-		if pgTable.HasColumn("id") {
-			rowIDs, err := pg2mysql.GetIncompatibleRowIDs(pg, pgTable, mysqlTable)
-			if err != nil {
-				return fmt.Errorf("failed getting incompatible row ids: %s", err)
-			}
-
-			if len(rowIDs) > 0 {
-				fmt.Printf("found incompatible rows in %s with IDs %v\n", pgTable.Name, rowIDs)
-			}
-		} else {
-			rowCount, err := pg2mysql.GetIncompatibleRowCount(pg, pgTable, mysqlTable)
-			if err != nil {
-				return fmt.Errorf("failed getting incompatible row count: %s", err)
-			}
-
-			if rowCount > 0 {
-				fmt.Printf("found %d incompatible rows in %s (which has no 'id' column)\n", rowCount, pgTable.Name)
-			}
-		}
+		fmt.Printf("found %d incompatible rows in %s (which has no 'id' column)\n", result.IncompatibleRowCount, result.TableName)
 	}
 
 	return nil
