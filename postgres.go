@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"regexp"
 
-	_ "github.com/lib/pq" // importing postgres driver
+	_ "github.com/lib/pq" // register postgres driver
 )
 
 var postgresTimestampRegexp = regexp.MustCompile(`\d\d\d\d-\d\d-\d\d.*\+0000 \+0000`)

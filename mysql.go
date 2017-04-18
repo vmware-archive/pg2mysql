@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 
-	_ "github.com/go-sql-driver/mysql" // importing mysql driver
+	_ "github.com/go-sql-driver/mysql" // register mysql driver
 )
 
 var mysqlTimestampFormat = "2006-01-02 15:04:05"
