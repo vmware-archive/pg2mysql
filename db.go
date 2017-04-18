@@ -47,14 +47,6 @@ func (t *Table) GetColumn(name string) (*Column, error) {
 	return nil, fmt.Errorf("column '%s' not found", name)
 }
 
-func (t *Table) GetColumnNames() []string {
-	var names []string
-	for i := range t.Columns {
-		names = append(names, t.Columns[i].Name)
-	}
-	return names
-}
-
 type Column struct {
 	Name     string
 	Type     string
