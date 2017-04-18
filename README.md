@@ -12,8 +12,9 @@ datatype, `varchar`, is defined with an explicit limit (e.g. `varchar(255)`).
 This means that, given a column with `text` datatype in PostgreSQL, there must
 be enough room in the equivalent MySQL column for the data in PostgreSQL to be
 safely migrated over. This tool can be used to validate the target MySQL schema
-against a populated PostgreSQL database. Later, it will be able to perform the
-migration, as well.
+against a populated PostgreSQL database and, provided the data in the
+PostgreSQL database is compatible, the migration to move the data from
+PostgreSQL to MySQL.
 
 ### Install from source
 
@@ -58,3 +59,20 @@ found incompatible rows in events with IDs [16 17 18]
 
 If there are any incompatible rows, as in above, they will need to be modified
 before proceeding with a migration.
+
+Run the migrator:
+
+```
+$ pg2mysql -c config.yml migrate --truncate
+inserted 1 records into spaces_developers
+inserted 0 records into security_groups_spaces
+inserted 0 records into service_bindings
+inserted 2 records into droplets
+inserted 2 records into organizations
+inserted 3 records into lockings
+inserted 0 records into service_dashboard_clients
+inserted 0 records into route_bindings
+...
+```
+
+_Note: The `--truncate` flag will truncate each table prior to copying data over._
