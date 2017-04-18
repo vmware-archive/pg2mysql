@@ -53,30 +53,23 @@ func (c *ValidateCommand) Execute([]string) error {
 			return fmt.Errorf("failed to get table from mysql schema: %s", err)
 		}
 
-		incompatibleColumns, err := mysqlTable.GetIncompatibleColumns(pgTable)
-		if err != nil {
-			return fmt.Errorf("failed getting incompatible columns: %s", err)
-		}
+		if pgTable.HasColumn("id") {
+			rowIDs, err := pg2mysql.GetIncompatibleRowIDs(pg, pgTable, mysqlTable)
+			if err != nil {
+				return fmt.Errorf("failed getting incompatible row ids: %s", err)
+			}
 
-		if len(incompatibleColumns) > 0 {
-			if pgTable.HasColumn("id") {
-				rowIDs, err := pgTable.GetIncompatibleRowIDs(pg, incompatibleColumns)
-				if err != nil {
-					return fmt.Errorf("failed getting incompatible row ids: %s", err)
-				}
+			if len(rowIDs) > 0 {
+				fmt.Printf("found incompatible rows in %s with IDs %v\n", pgTable.Name, rowIDs)
+			}
+		} else {
+			rowCount, err := pg2mysql.GetIncompatibleRowCount(pg, pgTable, mysqlTable)
+			if err != nil {
+				return fmt.Errorf("failed getting incompatible row count: %s", err)
+			}
 
-				if len(rowIDs) > 0 {
-					fmt.Printf("found incompatible rows in %s with IDs %v\n", pgTable.Name, rowIDs)
-				}
-			} else {
-				rowCount, err := pgTable.GetIncompatibleRowCount(pg, incompatibleColumns)
-				if err != nil {
-					return fmt.Errorf("failed getting incompatible row count: %s", err)
-				}
-
-				if rowCount > 0 {
-					fmt.Printf("found %d incompatible rows in %s (which has no 'id' column)\n", rowCount, pgTable.Name)
-				}
+			if rowCount > 0 {
+				fmt.Printf("found %d incompatible rows in %s (which has no 'id' column)\n", rowCount, pgTable.Name)
 			}
 		}
 	}

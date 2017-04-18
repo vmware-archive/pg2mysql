@@ -55,68 +55,6 @@ func (t *Table) GetColumnNames() []string {
 	return names
 }
 
-func (t *Table) GetIncompatibleColumns(other *Table) ([]*Column, error) {
-	var incompatibleColumns []*Column
-	for _, column := range t.Columns {
-		otherColumn, err := other.GetColumn(column.Name)
-		if err != nil {
-			return nil, fmt.Errorf("failed to find column '%s/%s' in destination schema: %s", t.Name, column.Name, err)
-		}
-
-		if column.Incompatible(otherColumn) {
-			incompatibleColumns = append(incompatibleColumns, column)
-		}
-	}
-
-	return incompatibleColumns, nil
-}
-
-func (t *Table) GetIncompatibleRowIDs(db DB, columns []*Column) ([]int, error) {
-	var limits []string
-	for _, column := range columns {
-		limits = append(limits, fmt.Sprintf("LENGTH(%s) > %d", column.Name, column.MaxChars))
-	}
-
-	stmt := fmt.Sprintf("SELECT id FROM %s WHERE %s", t.Name, strings.Join(limits, " OR "))
-	rows, err := db.DB().Query(stmt)
-	if err != nil {
-		return nil, fmt.Errorf("failed getting incompatible row ids: %s", err)
-	}
-	defer rows.Close()
-
-	var rowIDs []int
-	for rows.Next() {
-		var id int
-		if err := rows.Scan(&id); err != nil {
-			return nil, fmt.Errorf("failed to scan row: %s", err)
-		}
-		rowIDs = append(rowIDs, id)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return rowIDs, nil
-}
-
-func (t *Table) GetIncompatibleRowCount(db DB, columns []*Column) (int64, error) {
-	var limits []string
-	for _, column := range columns {
-		limits = append(limits, fmt.Sprintf("length(%s) > %d", column.Name, column.MaxChars))
-	}
-
-	stmt := fmt.Sprintf("SELECT count(1) FROM %s WHERE %s", t.Name, strings.Join(limits, " OR "))
-
-	var count int64
-	err := db.DB().QueryRow(stmt).Scan(&count)
-	if err != nil {
-		return 0, err
-	}
-
-	return count, nil
-}
-
 type Column struct {
 	Name     string
 	Type     string
@@ -182,4 +120,79 @@ func BuildSchema(db DB) (*Schema, error) {
 	}
 
 	return schema, nil
+}
+
+func GetIncompatibleColumns(src, dst *Table) ([]*Column, error) {
+	var incompatibleColumns []*Column
+	for _, dstColumn := range dst.Columns {
+		srcColumn, err := src.GetColumn(dstColumn.Name)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find column '%s/%s' in source schema: %s", dst.Name, dstColumn.Name, err)
+		}
+
+		if dstColumn.Incompatible(srcColumn) {
+			incompatibleColumns = append(incompatibleColumns, dstColumn)
+		}
+	}
+
+	return incompatibleColumns, nil
+}
+
+func GetIncompatibleRowIDs(db DB, src, dst *Table) ([]int, error) {
+	columns, err := GetIncompatibleColumns(src, dst)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting incompatible columns: %s", err)
+	}
+
+	var limits []string
+	for _, column := range columns {
+		limits = append(limits, fmt.Sprintf("LENGTH(%s) > %d", column.Name, column.MaxChars))
+	}
+
+	stmt := fmt.Sprintf("SELECT id FROM %s WHERE %s", src.Name, strings.Join(limits, " OR "))
+	rows, err := db.DB().Query(stmt)
+	if err != nil {
+		return nil, fmt.Errorf("failed getting incompatible row ids: %s", err)
+	}
+	defer rows.Close()
+
+	var rowIDs []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, fmt.Errorf("failed to scan row: %s", err)
+		}
+		rowIDs = append(rowIDs, id)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return rowIDs, nil
+}
+
+func GetIncompatibleRowCount(db DB, src, dst *Table) (int64, error) {
+	columns, err := GetIncompatibleColumns(src, dst)
+	if err != nil {
+		return 0, fmt.Errorf("failed getting incompatible columns: %s", err)
+	}
+
+	if len(columns) > 0 {
+		var limits []string
+		for _, column := range columns {
+			limits = append(limits, fmt.Sprintf("length(%s) > %d", column.Name, column.MaxChars))
+		}
+
+		stmt := fmt.Sprintf("SELECT count(1) FROM %s WHERE %s", src.Name, strings.Join(limits, " OR "))
+
+		var count int64
+		err = db.DB().QueryRow(stmt).Scan(&count)
+		if err != nil {
+			return 0, err
+		}
+		return count, nil
+	}
+
+	return 0, nil
 }
