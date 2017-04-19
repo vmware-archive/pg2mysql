@@ -39,5 +39,10 @@ func (c *MigrateCommand) Execute([]string) error {
 	}
 	defer pg.Close()
 
-	return pg2mysql.NewMigrator(pg, mysql, c.Truncate).Migrate()
+	_, err = pg2mysql.NewMigrator(pg, mysql, c.Truncate).Migrate()
+	if err != nil {
+		return fmt.Errorf("failed migrating: %s", err)
+	}
+
+	return nil
 }

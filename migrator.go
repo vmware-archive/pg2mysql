@@ -9,7 +9,7 @@ import (
 )
 
 type Migrator interface {
-	Migrate() error
+	Migrate() ([]MigrationResult, error)
 }
 
 func NewMigrator(src, dst DB, truncateFirst bool) Migrator {
@@ -25,15 +25,15 @@ type migrator struct {
 	truncateFirst bool
 }
 
-func (m *migrator) Migrate() error {
+func (m *migrator) Migrate() ([]MigrationResult, error) {
 	srcSchema, err := BuildSchema(m.src)
 	if err != nil {
-		return fmt.Errorf("failed to build source schema: %s", err)
+		return nil, fmt.Errorf("failed to build source schema: %s", err)
 	}
 
 	err = m.dst.DisableConstraints()
 	if err != nil {
-		return fmt.Errorf("failed to disable constraints: %s", err)
+		return nil, fmt.Errorf("failed to disable constraints: %s", err)
 	}
 
 	defer func() {
@@ -43,11 +43,13 @@ func (m *migrator) Migrate() error {
 		}
 	}()
 
+	var result []MigrationResult
+
 	for _, table := range srcSchema.Tables {
 		if m.truncateFirst {
 			_, err := m.dst.DB().Exec(fmt.Sprintf("TRUNCATE TABLE %s", table.Name))
 			if err != nil {
-				return fmt.Errorf("failed truncating: %s", err)
+				return nil, fmt.Errorf("failed truncating: %s", err)
 			}
 		}
 
@@ -72,19 +74,26 @@ func (m *migrator) Migrate() error {
 		if table.HasColumn("id") {
 			err := migrateWithIDs(columnNamesForSelect, columnNamesForInsert, m.src, m.dst, table, scanArgs, &recordsInserted)
 			if err != nil {
-				return fmt.Errorf("failed migrating table with ids: %s", err)
+				return nil, fmt.Errorf("failed migrating table with ids: %s", err)
 			}
 		} else {
 			err := migrateWithoutIDs(columnNamesForSelect, columnNamesForInsert, m.src, m.dst, table, scanArgs, &recordsInserted)
 			if err != nil {
-				return fmt.Errorf("failed migrating table without ids: %s", err)
+				return nil, fmt.Errorf("failed migrating table without ids: %s", err)
 			}
+		}
+
+		if recordsInserted > 0 {
+			result = append(result, MigrationResult{
+				TableName:    table.Name,
+				RowsMigrated: recordsInserted,
+			})
 		}
 
 		fmt.Printf("inserted %d records into %s\n", recordsInserted, table.Name)
 	}
 
-	return nil
+	return result, nil
 }
 
 func scanArgToInsertVal(column *Column, scanArg interface{}) string {
@@ -292,4 +301,10 @@ func migrateWithoutIDs(
 	}
 
 	return nil
+}
+
+type MigrationResult struct {
+	TableName    string
+	RowsMigrated int64
+	RowsSkipped  int64
 }
