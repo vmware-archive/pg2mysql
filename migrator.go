@@ -191,29 +191,13 @@ func migrateWithIDs(
 			insertVals = append(insertVals, scanArgToInsertVal(table.Columns[i], scanArg))
 		}
 
-		// insert missing data into dst
-		stmt = fmt.Sprintf(
-			"INSERT INTO %s (%s) VALUES (%s)",
-			table.Name,
-			strings.Join(columnNamesForInsert, ","),
-			strings.Join(insertVals, ","),
-		)
-		result, err := dst.DB().Exec(stmt)
+		err = dst.Insert(table.Name, columnNamesForInsert, insertVals)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to insert into %s: %s\n", table.Name, err)
 			continue
 		}
 
-		rowsAffected, err := result.RowsAffected()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error getting affected rows: %s", err)
-		}
-
-		if rowsAffected == 0 {
-			return fmt.Errorf("failed to insert row")
-		}
-
-		*recordsInserted += rowsAffected
+		*recordsInserted++
 	}
 
 	if err = rows.Err(); err != nil {
@@ -267,28 +251,13 @@ func migrateWithoutIDs(
 
 		// insert missing data into dst
 		if !existsInMySQL {
-			stmt = fmt.Sprintf(
-				"INSERT INTO %s (%s) VALUES (%s)",
-				table.Name,
-				strings.Join(columnNamesForInsert, ","),
-				strings.Join(insertVals, ","),
-			)
-			result, err := dst.DB().Exec(stmt)
+			err = dst.Insert(table.Name, columnNamesForInsert, insertVals)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "failed to insert into %s: %s\n", table.Name, err)
 				continue
 			}
 
-			rowsAffected, err := result.RowsAffected()
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "error getting affected rows: %s", err)
-			}
-
-			if rowsAffected == 0 {
-				return fmt.Errorf("failed to insert row")
-			}
-
-			*recordsInserted += rowsAffected
+			*recordsInserted++
 		}
 	}
 
