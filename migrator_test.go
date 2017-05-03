@@ -9,7 +9,7 @@ import (
 	"github.com/pivotal-cf/pg2mysql"
 )
 
-var _ = FDescribe("Migrator", func() {
+var _ = Describe("Migrator", func() {
 	var (
 		migrator      pg2mysql.Migrator
 		mysql         pg2mysql.DB
