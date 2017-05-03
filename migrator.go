@@ -2,10 +2,8 @@ package pg2mysql
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"strings"
-	"time"
 )
 
 type Migrator interface {
@@ -61,8 +59,7 @@ func (m *migrator) Migrate() ([]MigrationResult, error) {
 		}
 
 		// We don't know how many columns there are or what the types are, so we
-		// need to give db.Scan a *interface{} for each column. Later we unpack
-		// what's actually in each *interface{} with scanArgToInsertVal.
+		// need to give db.Scan a *interface{} for each column.
 		values := make([]interface{}, len(columnNamesForSelect))
 		scanArgs := make([]interface{}, len(values))
 		for i := range values {
@@ -94,43 +91,6 @@ func (m *migrator) Migrate() ([]MigrationResult, error) {
 	}
 
 	return result, nil
-}
-
-func scanArgToInsertVal(column *Column, scanArg interface{}) string {
-	ifacePtr, ok := scanArg.(*interface{})
-	if !ok {
-		log.Fatalf("received value which is not pointer to interface: %#v", scanArg)
-	}
-
-	iface := *ifacePtr
-	switch val := iface.(type) {
-	case nil:
-		return "NULL"
-	case int, int32, int64:
-		return fmt.Sprintf("%d", val)
-	case bool:
-		return fmt.Sprintf("%t", val)
-	case string:
-		return fmt.Sprintf("'%s'", val)
-	case []byte:
-		if column.Type == "USER-DEFINED" { // citext is USER-DEFINED
-			return fmt.Sprintf("'%s'", val)
-		}
-		return fmt.Sprintf("%s", val)
-	case time.Time:
-		timeStr := val.String()
-		if matched := postgresTimestampRegexp.MatchString(timeStr); matched {
-			timestampWithoutTimeZone := strings.Replace(timeStr, " +0000", "", -1)
-			t, err := time.Parse(mysqlTimestampFormat, timestampWithoutTimeZone)
-			if err != nil {
-				log.Fatalf("failed parsing time '%s': %s", timestampWithoutTimeZone, err)
-			}
-			return fmt.Sprintf("'%s'", t.Format(mysqlTimestampFormat))
-		}
-		log.Fatalf("'%s' looks like a timestamp but was not matched", val)
-	}
-
-	panic(fmt.Sprintf("don't know how to convert scan arg to insert val for %T", *ifacePtr))
 }
 
 func migrateWithIDs(
@@ -186,12 +146,7 @@ func migrateWithIDs(
 			return fmt.Errorf("failed to scan row: %s", err)
 		}
 
-		var insertVals []string
-		for i, scanArg := range scanArgs {
-			insertVals = append(insertVals, scanArgToInsertVal(table.Columns[i], scanArg))
-		}
-
-		err = dst.Insert(table.Name, columnNamesForInsert, insertVals)
+		err = dst.Insert(table.Name, columnNamesForInsert, scanArgs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to insert into %s: %s\n", table.Name, err)
 			continue
@@ -232,26 +187,21 @@ func migrateWithoutIDs(
 			return fmt.Errorf("failed to scan row: %s", err)
 		}
 
-		var insertVals []string
-		for i, scanArg := range scanArgs {
-			insertVals = append(insertVals, scanArgToInsertVal(table.Columns[i], scanArg))
-		}
-
 		var colVals []string
 		for i := range table.Columns {
-			colVals = append(colVals, fmt.Sprintf("%s=%s", table.Columns[i].Name, insertVals[i]))
+			colVals = append(colVals, fmt.Sprintf("%s=?", table.Columns[i].Name))
 		}
 
 		// determine if the row exists in dst
 		stmt = fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM %s WHERE %s)`, table.Name, strings.Join(colVals, " AND "))
 		var existsInMySQL bool
-		if err := dst.DB().QueryRow(stmt).Scan(&existsInMySQL); err != nil {
+		if err := dst.DB().QueryRow(stmt, scanArgs...).Scan(&existsInMySQL); err != nil {
 			return fmt.Errorf("failed to check if row exists: %s", err)
 		}
 
 		// insert missing data into dst
 		if !existsInMySQL {
-			err = dst.Insert(table.Name, columnNamesForInsert, insertVals)
+			err = dst.Insert(table.Name, columnNamesForInsert, scanArgs)
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "failed to insert into %s: %s\n", table.Name, err)
 				continue

@@ -72,8 +72,8 @@ var _ = Describe("Migrator", func() {
 					truthiness
 				) VALUES (
 					3,
-					'some-name',
-					'some-ci-name',
+					$$some'name$$,
+					$$some'ci'name$$,
 					'%s',
 					true
 				)`, currentTime.Format(time.RFC3339))
@@ -105,8 +105,8 @@ var _ = Describe("Migrator", func() {
 				Expect(err).NotTo(HaveOccurred())
 
 				Expect(id).To(Equal(3))
-				Expect(name).To(Equal("some-name"))
-				Expect(ci_name).To(Equal("some-ci-name"))
+				Expect(name).To(Equal("some'name"))
+				Expect(ci_name).To(Equal("some'ci'name"))
 				Expect(created_at.Format(time.RFC1123Z)).To(Equal(currentTime.Format(time.RFC1123Z)))
 				Expect(truthiness).To(BeTrue())
 			})
@@ -125,8 +125,8 @@ var _ = Describe("Migrator", func() {
 					created_at,
 					truthiness
 				) VALUES (
-					'some-name',
-					'some-ci-name',
+					$$some'name$$,
+					$$some'ci'name$$,
 					'%s',
 					true
 				)`, currentTime.Format(time.RFC3339))
@@ -152,12 +152,12 @@ var _ = Describe("Migrator", func() {
 				var created_at time.Time
 				var truthiness bool
 
-				stmt := "SELECT name, ci_name, created_at, truthiness FROM table_without_id WHERE name='some-name'"
+				stmt := `SELECT name, ci_name, created_at, truthiness FROM table_without_id WHERE name="some'name"`
 				err = mysqlRunner.DB().QueryRow(stmt).Scan(&name, &ci_name, &created_at, &truthiness)
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(name).To(Equal("some-name"))
-				Expect(ci_name).To(Equal("some-ci-name"))
+				Expect(name).To(Equal("some'name"))
+				Expect(ci_name).To(Equal("some'ci'name"))
 				Expect(created_at.Format(time.RFC1123Z)).To(Equal(currentTime.Format(time.RFC1123Z)))
 				Expect(truthiness).To(BeTrue())
 			})

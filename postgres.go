@@ -3,12 +3,9 @@ package pg2mysql
 import (
 	"database/sql"
 	"fmt"
-	"regexp"
 
 	_ "github.com/lib/pq" // register postgres driver
 )
-
-var postgresTimestampRegexp = regexp.MustCompile(`\d\d\d\d-\d\d-\d\d.*\+0000 \+0000`)
 
 func NewPostgreSQLDB(
 	database string,
@@ -85,6 +82,6 @@ func (p *postgreSQLDB) DisableConstraints() error {
 	panic("not implemented")
 }
 
-func (p *postgreSQLDB) Insert(tableName string, columns []string, values []string) error {
+func (p *postgreSQLDB) Insert(tableName string, columns []string, values []interface{}) error {
 	panic("not implemented")
 }

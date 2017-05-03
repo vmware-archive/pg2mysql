@@ -88,14 +88,19 @@ func (m *mySQLDB) DisableConstraints() error {
 	return err
 }
 
-func (m *mySQLDB) Insert(tableName string, columns []string, values []string) error {
+func (m *mySQLDB) Insert(tableName string, columns []string, values []interface{}) error {
+	placeholders := make([]string, len(values))
+	for i := range values {
+		placeholders[i] = "?"
+	}
+
 	stmt := fmt.Sprintf(
 		"INSERT INTO %s (%s) VALUES (%s)",
 		tableName,
 		strings.Join(columns, ","),
-		strings.Join(values, ","),
+		strings.Join(placeholders, ","),
 	)
-	result, err := m.db.Exec(stmt)
+	result, err := m.db.Exec(stmt, values...)
 	if err != nil {
 		return fmt.Errorf("failed to exec stmt: %s", err)
 	}
