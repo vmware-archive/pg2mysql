@@ -43,25 +43,21 @@ func (v *validator) Validate() ([]ValidationResult, error) {
 				return nil, fmt.Errorf("failed getting incompatible row ids: %s", err)
 			}
 
-			if len(rowIDs) > 0 {
-				results = append(results, ValidationResult{
-					TableName:            srcTable.Name,
-					IncompatibleRowIDs:   rowIDs,
-					IncompatibleRowCount: int64(len(rowIDs)),
-				})
-			}
+			results = append(results, ValidationResult{
+				TableName:            srcTable.Name,
+				IncompatibleRowIDs:   rowIDs,
+				IncompatibleRowCount: int64(len(rowIDs)),
+			})
 		} else {
 			rowCount, err := GetIncompatibleRowCount(v.src, srcTable, dstTable)
 			if err != nil {
 				return nil, fmt.Errorf("failed getting incompatible row count: %s", err)
 			}
 
-			if rowCount > 0 {
-				results = append(results, ValidationResult{
-					TableName:            srcTable.Name,
-					IncompatibleRowCount: rowCount,
-				})
-			}
+			results = append(results, ValidationResult{
+				TableName:            srcTable.Name,
+				IncompatibleRowCount: rowCount,
+			})
 		}
 	}
 

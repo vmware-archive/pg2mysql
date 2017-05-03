@@ -47,10 +47,17 @@ var _ = Describe("Validator", func() {
 	})
 
 	Describe("Validate", func() {
-		It("returns an empty result", func() {
+		It("returns a result", func() {
 			result, err := validator.Validate()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(BeNil())
+			Expect(result).To(HaveLen(2))
+			Expect(result).To(ContainElement(pg2mysql.ValidationResult{
+				TableName: "table_with_id",
+			}))
+
+			Expect(result).To(ContainElement(pg2mysql.ValidationResult{
+				TableName: "table_without_id",
+			}))
 		})
 
 		Context("when there is compatible data in postgres", func() {
@@ -62,10 +69,17 @@ var _ = Describe("Validator", func() {
 				Expect(rowsAffected).To(BeNumerically("==", 1))
 			})
 
-			It("returns an empty result", func() {
+			It("returns a result", func() {
 				result, err := validator.Validate()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(BeNil())
+				Expect(result).To(HaveLen(2))
+				Expect(result).To(ContainElement(pg2mysql.ValidationResult{
+					TableName: "table_with_id",
+				}))
+
+				Expect(result).To(ContainElement(pg2mysql.ValidationResult{
+					TableName: "table_without_id",
+				}))
 			})
 		})
 
@@ -78,15 +92,19 @@ var _ = Describe("Validator", func() {
 				Expect(rowsAffected).To(BeNumerically("==", 1))
 			})
 
-			It("returns a non-empty result", func() {
+			It("returns a result", func() {
 				result, err := validator.Validate()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal([]pg2mysql.ValidationResult{
-					{
-						TableName:            "table_with_id",
-						IncompatibleRowIDs:   []int{3},
-						IncompatibleRowCount: 1,
-					},
+
+				Expect(result).To(HaveLen(2))
+				Expect(result).To(ContainElement(pg2mysql.ValidationResult{
+					TableName:            "table_with_id",
+					IncompatibleRowIDs:   []int{3},
+					IncompatibleRowCount: 1,
+				}))
+
+				Expect(result).To(ContainElement(pg2mysql.ValidationResult{
+					TableName: "table_without_id",
 				}))
 			})
 		})
@@ -100,15 +118,18 @@ var _ = Describe("Validator", func() {
 				Expect(rowsAffected).To(BeNumerically("==", 1))
 			})
 
-			It("returns a non-empty result", func() {
+			It("returns a result", func() {
 				result, err := validator.Validate()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(Equal([]pg2mysql.ValidationResult{
-					{
-						TableName:            "table_without_id",
-						IncompatibleRowIDs:   nil,
-						IncompatibleRowCount: 1,
-					},
+				Expect(result).To(HaveLen(2))
+				Expect(result).To(ContainElement(pg2mysql.ValidationResult{
+					TableName: "table_with_id",
+				}))
+
+				Expect(result).To(ContainElement(pg2mysql.ValidationResult{
+					TableName:            "table_without_id",
+					IncompatibleRowIDs:   nil,
+					IncompatibleRowCount: 1,
 				}))
 			})
 		})

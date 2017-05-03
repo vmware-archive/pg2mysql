@@ -43,12 +43,16 @@ func (c *ValidateCommand) Execute([]string) error {
 	}
 
 	for _, result := range results {
-		if len(result.IncompatibleRowIDs) > 0 {
-			fmt.Printf("found incompatible rows in %s with IDs %v\n", result.TableName, result.IncompatibleRowIDs)
-			continue
-		}
+		switch {
+		case len(result.IncompatibleRowIDs) > 0:
+			fmt.Printf("found %d incompatible rows in %s with IDs %v\n", result.IncompatibleRowCount, result.TableName, result.IncompatibleRowIDs)
 
-		fmt.Printf("found %d incompatible rows in %s (which has no 'id' column)\n", result.IncompatibleRowCount, result.TableName)
+		case result.IncompatibleRowCount > 0:
+			fmt.Printf("found %d incompatible rows in %s (which has no 'id' column)\n", result.IncompatibleRowCount, result.TableName)
+
+		default:
+			fmt.Printf("%s OK\n", result.TableName)
+		}
 	}
 
 	return nil
