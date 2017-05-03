@@ -18,9 +18,6 @@ var _ = Describe("Migrator", func() {
 	)
 
 	BeforeEach(func() {
-		_, err := mysqlRunner.DB().Exec(fmt.Sprintf("USE %s", mysqlRunner.DBName))
-		Expect(err).NotTo(HaveOccurred())
-
 		mysql = pg2mysql.NewMySQLDB(
 			mysqlRunner.DBName,
 			"root",
@@ -29,7 +26,7 @@ var _ = Describe("Migrator", func() {
 			3306,
 		)
 
-		err = mysql.Open()
+		err := mysql.Open()
 		Expect(err).NotTo(HaveOccurred())
 
 		pg = pg2mysql.NewPostgreSQLDB(

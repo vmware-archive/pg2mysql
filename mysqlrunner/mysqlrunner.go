@@ -35,7 +35,13 @@ func (runner *Runner) Setup() {
 	_, err = dbConn.Exec(fmt.Sprintf("CREATE DATABASE %s", runner.DBName))
 	Expect(err).NotTo(HaveOccurred())
 
+	dbConn.Close()
+
 	dbConfig.DBName = runner.DBName
+
+	dbConn, err = sql.Open("mysql", dbConfig.FormatDSN())
+	Expect(err).NotTo(HaveOccurred())
+
 	runner.dbConn = dbConn
 }
 
