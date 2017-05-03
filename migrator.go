@@ -195,7 +195,7 @@ func migrateWithoutIDs(
 		// determine if the row exists in dst
 		stmt = fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM %s WHERE %s)`, table.Name, strings.Join(colVals, " AND "))
 		var existsInMySQL bool
-		if err := dst.DB().QueryRow(stmt, scanArgs...).Scan(&existsInMySQL); err != nil {
+		if err = dst.DB().QueryRow(stmt, scanArgs...).Scan(&existsInMySQL); err != nil {
 			return fmt.Errorf("failed to check if row exists: %s", err)
 		}
 
