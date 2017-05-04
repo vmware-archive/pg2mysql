@@ -29,15 +29,15 @@ Create a config:
 ```
 $ cat > config.yml <<EOF
 mysql:
-  database: cloud_controller
-  username: cloud_controller
+  database: some-dbname
+  username: some-user
   password: some-password
   host: 192.168.10.1
   port: 3306
 
 postgresql:
-  database: cloud_controller
-  username: cloud_controller
+  database: some-dbname
+  username: some-user
   password: some-password
   host: 192.168.10.2
   port: 5432
