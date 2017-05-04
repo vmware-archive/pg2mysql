@@ -19,7 +19,7 @@ PostgreSQL to MySQL.
 ## Install from source
 
 ```
-go install github.com/pivotal-cf/pg2mysql
+go get github.com/pivotal-cf/pg2mysql/cmd/pg2mysql
 ```
 
 ## Usage
