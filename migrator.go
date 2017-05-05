@@ -211,7 +211,7 @@ func migrateWithoutIDs(
 		}
 	}
 
-	if err := rows.Err(); err != nil {
+	if err = rows.Err(); err != nil {
 		return fmt.Errorf("failed iterating through rows: %s", err)
 	}
 
