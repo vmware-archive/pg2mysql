@@ -51,11 +51,11 @@ func (m *migrator) Migrate() ([]MigrationResult, error) {
 			}
 		}
 
-		var columnNamesForSelect []string
-		var columnNamesForInsert []string
+		columnNamesForSelect := make([]string, len(table.Columns))
+		columnNamesForInsert := make([]string, len(table.Columns))
 		for i := range table.Columns {
-			columnNamesForSelect = append(columnNamesForSelect, table.Columns[i].Name)
-			columnNamesForInsert = append(columnNamesForInsert, fmt.Sprintf("`%s`", table.Columns[i].Name))
+			columnNamesForSelect[i] = table.Columns[i].Name
+			columnNamesForInsert[i] = fmt.Sprintf("`%s`", table.Columns[i].Name)
 		}
 
 		// We don't know how many columns there are or what the types are, so we
@@ -187,9 +187,9 @@ func migrateWithoutIDs(
 			return fmt.Errorf("failed to scan row: %s", err)
 		}
 
-		var colVals []string
+		colVals := make([]string, len(table.Columns))
 		for i := range table.Columns {
-			colVals = append(colVals, fmt.Sprintf("%s=?", table.Columns[i].Name))
+			colVals[i] = fmt.Sprintf("%s=?", table.Columns[i].Name)
 		}
 
 		// determine if the row exists in dst
