@@ -137,6 +137,10 @@ func GetIncompatibleRowIDs(db DB, src, dst *Table) ([]int, error) {
 		return nil, fmt.Errorf("failed getting incompatible columns: %s", err)
 	}
 
+	if columns == nil {
+		return nil, nil
+	}
+
 	limits := make([]string, len(columns))
 	for i, column := range columns {
 		limits[i] = fmt.Sprintf("LENGTH(%s) > %d", column.Name, column.MaxChars)
@@ -171,21 +175,22 @@ func GetIncompatibleRowCount(db DB, src, dst *Table) (int64, error) {
 		return 0, fmt.Errorf("failed getting incompatible columns: %s", err)
 	}
 
-	if len(columns) > 0 {
-		limits := make([]string, len(columns))
-		for i, column := range columns {
-			limits[i] = fmt.Sprintf("length(%s) > %d", column.Name, column.MaxChars)
-		}
-
-		stmt := fmt.Sprintf("SELECT count(1) FROM %s WHERE %s", src.Name, strings.Join(limits, " OR "))
-
-		var count int64
-		err = db.DB().QueryRow(stmt).Scan(&count)
-		if err != nil {
-			return 0, err
-		}
-		return count, nil
+	if columns == nil {
+		return 0, nil
 	}
 
-	return 0, nil
+	limits := make([]string, len(columns))
+	for i, column := range columns {
+		limits[i] = fmt.Sprintf("length(%s) > %d", column.Name, column.MaxChars)
+	}
+
+	stmt := fmt.Sprintf("SELECT count(1) FROM %s WHERE %s", src.Name, strings.Join(limits, " OR "))
+
+	var count int64
+	err = db.DB().QueryRow(stmt).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
