@@ -151,7 +151,6 @@ func GetIncompatibleRowIDs(db DB, src, dst *Table) ([]int, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed getting incompatible row ids: %s", err)
 	}
-	defer rows.Close()
 
 	var rowIDs []int
 	for rows.Next() {
@@ -163,6 +162,10 @@ func GetIncompatibleRowIDs(db DB, src, dst *Table) ([]int, error) {
 	}
 
 	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	if err := rows.Close(); err != nil {
 		return nil, err
 	}
 
