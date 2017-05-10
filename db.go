@@ -76,7 +76,6 @@ func BuildSchema(db DB) (*Schema, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	data := map[string][]*Column{}
 	for rows.Next() {
@@ -100,6 +99,10 @@ func BuildSchema(db DB) (*Schema, error) {
 
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("failed to iterate through schema rows: %s", err)
+	}
+
+	if err := rows.Close(); err != nil {
+		return nil, fmt.Errorf("failed closing rows: %s", err)
 	}
 
 	schema := &Schema{
