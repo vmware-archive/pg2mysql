@@ -35,6 +35,7 @@ type PG2MySQLCommand struct {
 
 	Validate ValidateCommand `command:"validate" description:"Validate that the data in PostgreSQL can be migrated to MySQL"`
 	Migrate  MigrateCommand  `command:"migrate" description:"Migrate data from PostgreSQL to MySQL"`
+	Verify   VerifyCommand   `command:"verify" description:"Verify migrated data matches"`
 }
 
 var PG2MySQL PG2MySQLCommand
