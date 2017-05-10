@@ -9,8 +9,6 @@ import (
 	"github.com/go-sql-driver/mysql"
 )
 
-var mysqlTimestampFormat = "2006-01-02 15:04:05"
-
 func NewMySQLDB(
 	database string,
 	username string,
