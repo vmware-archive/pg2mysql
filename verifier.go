@@ -1,11 +1,6 @@
 package pg2mysql
 
-import (
-	"fmt"
-	"log"
-	"strings"
-	"time"
-)
+import "fmt"
 
 type Verifier interface {
 	Verify() ([]VerificationResult, error)
@@ -46,67 +41,13 @@ func (c *verifier) Verify() ([]VerificationResult, error) {
 }
 
 func verifyTable(src, dst DB, table *Table) (VerificationResult, error) {
-	columnNamesForSelect := make([]string, len(table.Columns))
-	columnNamesForInsert := make([]string, len(table.Columns))
-	values := make([]interface{}, len(table.Columns))
-	scanArgs := make([]interface{}, len(table.Columns))
-	colVals := make([]string, len(table.Columns))
-	for i := range table.Columns {
-		columnNamesForSelect[i] = table.Columns[i].Name
-		columnNamesForInsert[i] = fmt.Sprintf("`%s`", table.Columns[i].Name)
-		scanArgs[i] = &values[i]
-		colVals[i] = fmt.Sprintf("%s <=> ?", table.Columns[i].Name)
-	}
-
-	// select all rows in src
-	stmt := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columnNamesForSelect, ","), table.Name)
-	rows, err := src.DB().Query(stmt)
-	if err != nil {
-		return VerificationResult{}, fmt.Errorf("failed to select rows: %s", err)
-	}
-
-	stmt = fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM %s WHERE %s)`, table.Name, strings.Join(colVals, " AND "))
-	preparedStmt, err := dst.DB().Prepare(stmt)
-	if err != nil {
-		return VerificationResult{}, fmt.Errorf("failed to prepare statement: %s", err)
-	}
-
 	var missingRows int64
-	var exists bool
-	for rows.Next() {
-		if err = rows.Scan(scanArgs...); err != nil {
-			return VerificationResult{}, fmt.Errorf("failed to scan row: %s", err)
-		}
+	err := EachMissingRow(src, dst, table, func(scanArgs []interface{}) {
+		missingRows++
+	})
 
-		for i := range scanArgs {
-			arg := scanArgs[i]
-			iface, ok := arg.(*interface{})
-			if !ok {
-				log.Fatalf("received unexpected type as scanArg: %T (should be *interface{})", arg)
-			}
-
-			// replace the precise PostgreSQL time with a less precise MySQL-compatible time
-			if t1, ok := (*iface).(time.Time); ok {
-				scanArgs[i] = t1.Truncate(time.Second)
-			}
-		}
-
-		// determine if the row exists in dst
-		if err = preparedStmt.QueryRow(scanArgs...).Scan(&exists); err != nil {
-			return VerificationResult{}, fmt.Errorf("failed to check if row exists: %s", err)
-		}
-
-		if !exists {
-			missingRows++
-		}
-	}
-
-	if err = rows.Err(); err != nil {
-		return VerificationResult{}, fmt.Errorf("failed iterating through rows: %s", err)
-	}
-
-	if err = rows.Close(); err != nil {
-		return VerificationResult{}, fmt.Errorf("failed closing rows: %s", err)
+	if err != nil {
+		return VerificationResult{}, fmt.Errorf("failed finding missing rows: %s", err)
 	}
 
 	return VerificationResult{

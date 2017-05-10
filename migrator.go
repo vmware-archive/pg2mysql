@@ -51,30 +51,27 @@ func (m *migrator) Migrate() ([]MigrationResult, error) {
 			}
 		}
 
-		columnNamesForSelect := make([]string, len(table.Columns))
 		columnNamesForInsert := make([]string, len(table.Columns))
 		for i := range table.Columns {
-			columnNamesForSelect[i] = table.Columns[i].Name
 			columnNamesForInsert[i] = fmt.Sprintf("`%s`", table.Columns[i].Name)
-		}
-
-		// We don't know how many columns there are or what the types are, so we
-		// need to give db.Scan a *interface{} for each column.
-		values := make([]interface{}, len(columnNamesForSelect))
-		scanArgs := make([]interface{}, len(values))
-		for i := range values {
-			scanArgs[i] = &values[i]
 		}
 
 		var recordsInserted int64
 
 		if table.HasColumn("id") {
-			err := migrateWithIDs(columnNamesForSelect, columnNamesForInsert, m.src, m.dst, table, scanArgs, &recordsInserted)
+			err := migrateWithIDs(columnNamesForInsert, m.src, m.dst, table, &recordsInserted)
 			if err != nil {
 				return nil, fmt.Errorf("failed migrating table with ids: %s", err)
 			}
 		} else {
-			err := migrateWithoutIDs(columnNamesForSelect, columnNamesForInsert, m.src, m.dst, table, scanArgs, &recordsInserted)
+			err := EachMissingRow(m.src, m.dst, table, func(scanArgs []interface{}) {
+				err := m.dst.Insert(table.Name, columnNamesForInsert, scanArgs)
+				if err != nil {
+					fmt.Fprintf(os.Stderr, "failed to insert into %s: %s\n", table.Name, err)
+					return
+				}
+				recordsInserted++
+			})
 			if err != nil {
 				return nil, fmt.Errorf("failed migrating table without ids: %s", err)
 			}
@@ -94,14 +91,20 @@ func (m *migrator) Migrate() ([]MigrationResult, error) {
 }
 
 func migrateWithIDs(
-	columnNamesForSelect []string,
 	columnNamesForInsert []string,
 	src DB,
 	dst DB,
 	table *Table,
-	scanArgs []interface{},
 	recordsInserted *int64,
 ) error {
+	columnNamesForSelect := make([]string, len(table.Columns))
+	values := make([]interface{}, len(table.Columns))
+	scanArgs := make([]interface{}, len(table.Columns))
+	for i := range table.Columns {
+		columnNamesForSelect[i] = table.Columns[i].Name
+		scanArgs[i] = &values[i]
+	}
+
 	// find ids already in dst
 	rows, err := dst.DB().Query(fmt.Sprintf("SELECT id FROM %s", table.Name))
 	if err != nil {
@@ -153,62 +156,6 @@ func migrateWithIDs(
 		}
 
 		*recordsInserted++
-	}
-
-	if err = rows.Err(); err != nil {
-		return fmt.Errorf("failed iterating through rows: %s", err)
-	}
-
-	if err = rows.Close(); err != nil {
-		return fmt.Errorf("failed closing rows: %s", err)
-	}
-
-	return nil
-}
-
-func migrateWithoutIDs(
-	columnNamesForSelect []string,
-	columnNamesForInsert []string,
-	src DB,
-	dst DB,
-	table *Table,
-	scanArgs []interface{},
-	recordsInserted *int64,
-) error {
-	// select all rows in src
-	stmt := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columnNamesForSelect, ","), table.Name)
-	rows, err := src.DB().Query(stmt)
-	if err != nil {
-		return fmt.Errorf("failed to select rows: %s", err)
-	}
-
-	for rows.Next() {
-		if err = rows.Scan(scanArgs...); err != nil {
-			return fmt.Errorf("failed to scan row: %s", err)
-		}
-
-		colVals := make([]string, len(table.Columns))
-		for i := range table.Columns {
-			colVals[i] = fmt.Sprintf("%s=?", table.Columns[i].Name)
-		}
-
-		// determine if the row exists in dst
-		stmt = fmt.Sprintf(`SELECT EXISTS (SELECT 1 FROM %s WHERE %s)`, table.Name, strings.Join(colVals, " AND "))
-		var existsInMySQL bool
-		if err = dst.DB().QueryRow(stmt, scanArgs...).Scan(&existsInMySQL); err != nil {
-			return fmt.Errorf("failed to check if row exists: %s", err)
-		}
-
-		// insert missing data into dst
-		if !existsInMySQL {
-			err = dst.Insert(table.Name, columnNamesForInsert, scanArgs)
-			if err != nil {
-				fmt.Fprintf(os.Stderr, "failed to insert into %s: %s\n", table.Name, err)
-				continue
-			}
-
-			*recordsInserted++
-		}
 	}
 
 	if err = rows.Err(); err != nil {
