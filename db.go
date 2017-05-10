@@ -14,7 +14,6 @@ type DB interface {
 	GetSchemaRows() (*sql.Rows, error)
 	DisableConstraints() error
 	EnableConstraints() error
-	Insert(tableName string, columns []string, values []interface{}) error
 	DB() *sql.DB
 }
 

@@ -1,6 +1,8 @@
 package pg2mysql
 
 import (
+	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -52,20 +54,32 @@ func (m *migrator) Migrate() ([]MigrationResult, error) {
 		}
 
 		columnNamesForInsert := make([]string, len(table.Columns))
+		placeholders := make([]string, len(table.Columns))
 		for i := range table.Columns {
 			columnNamesForInsert[i] = fmt.Sprintf("`%s`", table.Columns[i].Name)
+			placeholders[i] = "?"
+		}
+
+		preparedStmt, err := m.dst.DB().Prepare(fmt.Sprintf(
+			"INSERT INTO %s (%s) VALUES (%s)",
+			table.Name,
+			strings.Join(columnNamesForInsert, ","),
+			strings.Join(placeholders, ","),
+		))
+		if err != nil {
+			return nil, fmt.Errorf("failed creating prepared statement: %s", err)
 		}
 
 		var recordsInserted int64
 
 		if table.HasColumn("id") {
-			err := migrateWithIDs(columnNamesForInsert, m.src, m.dst, table, &recordsInserted)
+			err = migrateWithIDs(m.src, m.dst, table, &recordsInserted, preparedStmt)
 			if err != nil {
 				return nil, fmt.Errorf("failed migrating table with ids: %s", err)
 			}
 		} else {
-			err := EachMissingRow(m.src, m.dst, table, func(scanArgs []interface{}) {
-				err := m.dst.Insert(table.Name, columnNamesForInsert, scanArgs)
+			err = EachMissingRow(m.src, m.dst, table, func(scanArgs []interface{}) {
+				err = insert(preparedStmt, scanArgs)
 				if err != nil {
 					fmt.Fprintf(os.Stderr, "failed to insert into %s: %s\n", table.Name, err)
 					return
@@ -91,11 +105,11 @@ func (m *migrator) Migrate() ([]MigrationResult, error) {
 }
 
 func migrateWithIDs(
-	columnNamesForInsert []string,
 	src DB,
 	dst DB,
 	table *Table,
 	recordsInserted *int64,
+	preparedStmt *sql.Stmt,
 ) error {
 	columnNamesForSelect := make([]string, len(table.Columns))
 	values := make([]interface{}, len(table.Columns))
@@ -149,7 +163,7 @@ func migrateWithIDs(
 			return fmt.Errorf("failed to scan row: %s", err)
 		}
 
-		err = dst.Insert(table.Name, columnNamesForInsert, scanArgs)
+		err = insert(preparedStmt, scanArgs)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "failed to insert into %s: %s\n", table.Name, err)
 			continue
@@ -173,4 +187,22 @@ type MigrationResult struct {
 	TableName    string
 	RowsMigrated int64
 	RowsSkipped  int64
+}
+
+func insert(stmt *sql.Stmt, values []interface{}) error {
+	result, err := stmt.Exec(values...)
+	if err != nil {
+		return fmt.Errorf("failed to exec stmt: %s", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed getting rows affected by insert: %s", err)
+	}
+
+	if rowsAffected == 0 {
+		return errors.New("no rows affected by insert")
+	}
+
+	return nil
 }

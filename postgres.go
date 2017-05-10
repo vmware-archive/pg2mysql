@@ -81,7 +81,3 @@ func (p *postgreSQLDB) EnableConstraints() error {
 func (p *postgreSQLDB) DisableConstraints() error {
 	panic("not implemented")
 }
-
-func (p *postgreSQLDB) Insert(tableName string, columns []string, values []interface{}) error {
-	panic("not implemented")
-}
