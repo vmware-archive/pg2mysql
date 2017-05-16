@@ -6,6 +6,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/pg2mysql"
+	"github.com/pivotal-cf/pg2mysql/pg2mysqlfakes"
 )
 
 var _ = Describe("Verifier", func() {
@@ -13,6 +14,7 @@ var _ = Describe("Verifier", func() {
 		verifier pg2mysql.Verifier
 		mysql    pg2mysql.DB
 		pg       pg2mysql.DB
+		watcher  *pg2mysqlfakes.FakeVerifierWatcher
 	)
 
 	BeforeEach(func() {
@@ -38,7 +40,8 @@ var _ = Describe("Verifier", func() {
 		err = pg.Open()
 		Expect(err).NotTo(HaveOccurred())
 
-		verifier = pg2mysql.NewVerifier(pg, mysql)
+		watcher = &pg2mysqlfakes.FakeVerifierWatcher{}
+		verifier = pg2mysql.NewVerifier(pg, mysql, watcher)
 	})
 
 	AfterEach(func() {
@@ -49,19 +52,14 @@ var _ = Describe("Verifier", func() {
 	})
 
 	Describe("Verify", func() {
-		It("returns results", func() {
-			result, err := verifier.Verify()
+		It("notifies the watcher", func() {
+			err := verifier.Verify()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(HaveLen(2))
-			Expect(result).To(ContainElement(pg2mysql.VerificationResult{
-				TableName:       "table_with_id",
-				MissingRowCount: 0,
-			}))
-
-			Expect(result).To(ContainElement(pg2mysql.VerificationResult{
-				TableName:       "table_without_id",
-				MissingRowCount: 0,
-			}))
+			Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(2))
+			_, missingRows := watcher.TableVerificationDidFinishArgsForCall(0)
+			Expect(missingRows).To(BeZero())
+			_, missingRows = watcher.TableVerificationDidFinishArgsForCall(1)
+			Expect(missingRows).To(BeZero())
 		})
 
 		Context("when there is data in postgres that is not in mysql", func() {
@@ -73,19 +71,21 @@ var _ = Describe("Verifier", func() {
 				Expect(rowsAffected).To(BeNumerically("==", 1))
 			})
 
-			It("returns a result", func() {
-				result, err := verifier.Verify()
+			It("notifies the watcher", func() {
+				err := verifier.Verify()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(HaveLen(2))
-				Expect(result).To(ContainElement(pg2mysql.VerificationResult{
-					TableName:       "table_with_id",
-					MissingRowCount: 1,
-				}))
+				Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(2))
 
-				Expect(result).To(ContainElement(pg2mysql.VerificationResult{
-					TableName:       "table_without_id",
-					MissingRowCount: 0,
-				}))
+				expected := map[string]int64{
+					"table_with_id":    1,
+					"table_without_id": 0,
+				}
+
+				tableName, missingRows := watcher.TableVerificationDidFinishArgsForCall(0)
+				Expect(missingRows).To(Equal(expected[tableName]))
+
+				tableName, missingRows = watcher.TableVerificationDidFinishArgsForCall(1)
+				Expect(missingRows).To(Equal(expected[tableName]))
 			})
 		})
 
@@ -112,19 +112,21 @@ var _ = Describe("Verifier", func() {
 				Expect(rowsAffected).To(BeNumerically("==", 1))
 			})
 
-			It("returns a result", func() {
-				result, err := verifier.Verify()
+			It("notifies the watcher", func() {
+				err := verifier.Verify()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(HaveLen(2))
-				Expect(result).To(ContainElement(pg2mysql.VerificationResult{
-					TableName:       "table_with_id",
-					MissingRowCount: 0,
-				}))
+				Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(2))
 
-				Expect(result).To(ContainElement(pg2mysql.VerificationResult{
-					TableName:       "table_without_id",
-					MissingRowCount: 0,
-				}))
+				expected := map[string]int64{
+					"table_with_id":    0,
+					"table_without_id": 0,
+				}
+
+				tableName, missingRows := watcher.TableVerificationDidFinishArgsForCall(0)
+				Expect(missingRows).To(Equal(expected[tableName]))
+
+				tableName, missingRows = watcher.TableVerificationDidFinishArgsForCall(1)
+				Expect(missingRows).To(Equal(expected[tableName]))
 			})
 		})
 	})

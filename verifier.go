@@ -3,55 +3,52 @@ package pg2mysql
 import "fmt"
 
 type Verifier interface {
-	Verify() ([]VerificationResult, error)
-}
-
-type VerificationResult struct {
-	TableName       string
-	MissingRowCount int64
+	Verify() error
 }
 
 type verifier struct {
 	src, dst DB
+	watcher  VerifierWatcher
 }
 
-func NewVerifier(src, dst DB) Verifier {
+func NewVerifier(src, dst DB, watcher VerifierWatcher) Verifier {
 	return &verifier{
-		src: src,
-		dst: dst,
+		src:     src,
+		dst:     dst,
+		watcher: watcher,
 	}
 }
 
-func (c *verifier) Verify() ([]VerificationResult, error) {
-	srcSchema, err := BuildSchema(c.src)
+func (v *verifier) Verify() error {
+	srcSchema, err := BuildSchema(v.src)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build source schema: %s", err)
+		return fmt.Errorf("failed to build source schema: %s", err)
 	}
 
-	var results []VerificationResult
 	for _, table := range srcSchema.Tables {
-		result, err := verifyTable(c.src, c.dst, table)
+		v.watcher.TableVerificationDidStart(table.Name)
+
+		missingRows, err := verifyTable(v.src, v.dst, table)
 		if err != nil {
-			return nil, err
+			v.watcher.TableVerificationDidFinishWithError(table.Name, err)
+			continue
 		}
-		results = append(results, result)
+
+		v.watcher.TableVerificationDidFinish(table.Name, missingRows)
 	}
 
-	return results, nil
+	return nil
 }
 
-func verifyTable(src, dst DB, table *Table) (VerificationResult, error) {
+func verifyTable(src, dst DB, table *Table) (int64, error) {
 	var missingRows int64
 	err := EachMissingRow(src, dst, table, func(scanArgs []interface{}) {
 		missingRows++
 	})
 
 	if err != nil {
-		return VerificationResult{}, fmt.Errorf("failed finding missing rows: %s", err)
+		return 0, fmt.Errorf("failed finding missing rows: %s", err)
 	}
 
-	return VerificationResult{
-		TableName:       table.Name,
-		MissingRowCount: missingRows,
-	}, nil
+	return missingRows, nil
 }

@@ -37,18 +37,10 @@ func (c *VerifyCommand) Execute([]string) error {
 	}
 	defer pg.Close()
 
-	results, err := pg2mysql.NewVerifier(pg, mysql).Verify()
+	watcher := pg2mysql.NewStdoutPrinter()
+	err = pg2mysql.NewVerifier(pg, mysql, watcher).Verify()
 	if err != nil {
 		return fmt.Errorf("failed to verify: %s", err)
-	}
-
-	for _, result := range results {
-		if result.MissingRowCount > 0 {
-			fmt.Printf("found %d missing rows in %s\n", result.MissingRowCount, result.TableName)
-			continue
-		}
-
-		fmt.Printf("%s OK\n", result.TableName)
 	}
 
 	return nil
