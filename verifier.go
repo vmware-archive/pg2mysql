@@ -28,7 +28,10 @@ func (v *verifier) Verify() error {
 	for _, table := range srcSchema.Tables {
 		v.watcher.TableVerificationDidStart(table.Name)
 
-		missingRows, err := verifyTable(v.src, v.dst, table)
+		var missingRows int64
+		err = EachMissingRow(v.src, v.dst, table, func(scanArgs []interface{}) {
+			missingRows++
+		})
 		if err != nil {
 			v.watcher.TableVerificationDidFinishWithError(table.Name, err)
 			continue
@@ -38,17 +41,4 @@ func (v *verifier) Verify() error {
 	}
 
 	return nil
-}
-
-func verifyTable(src, dst DB, table *Table) (int64, error) {
-	var missingRows int64
-	err := EachMissingRow(src, dst, table, func(scanArgs []interface{}) {
-		missingRows++
-	})
-
-	if err != nil {
-		return 0, fmt.Errorf("failed finding missing rows: %s", err)
-	}
-
-	return missingRows, nil
 }
