@@ -205,13 +205,11 @@ func GetIncompatibleRowCount(db DB, src, dst *Table) (int64, error) {
 
 func EachMissingRow(src, dst DB, table *Table, f func([]interface{})) error {
 	srcColumnNamesForSelect := make([]string, len(table.Columns))
-	columnNamesForInsert := make([]string, len(table.Columns))
 	values := make([]interface{}, len(table.Columns))
 	scanArgs := make([]interface{}, len(table.Columns))
 	colVals := make([]string, len(table.Columns))
 	for i := range table.Columns {
 		srcColumnNamesForSelect[i] = src.ColumnNameForSelect(table.Columns[i].Name)
-		columnNamesForInsert[i] = fmt.Sprintf("`%s`", table.Columns[i].Name)
 		scanArgs[i] = &values[i]
 		colVals[i] = fmt.Sprintf("%s <=> ?", dst.ColumnNameForSelect(table.Columns[i].Name))
 	}
