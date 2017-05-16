@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/pivotal-cf/pg2mysql"
+	"github.com/pivotal-cf/pg2mysql/pg2mysqlfakes"
 )
 
 var _ = Describe("Migrator", func() {
@@ -15,6 +16,7 @@ var _ = Describe("Migrator", func() {
 		mysql         pg2mysql.DB
 		pg            pg2mysql.DB
 		truncateFirst bool
+		watcher       *pg2mysqlfakes.FakeMigratorWatcher
 	)
 
 	BeforeEach(func() {
@@ -40,7 +42,8 @@ var _ = Describe("Migrator", func() {
 		err = pg.Open()
 		Expect(err).NotTo(HaveOccurred())
 
-		migrator = pg2mysql.NewMigrator(pg, mysql, truncateFirst)
+		watcher = &pg2mysqlfakes.FakeMigratorWatcher{}
+		migrator = pg2mysql.NewMigrator(pg, mysql, truncateFirst, watcher)
 	})
 
 	AfterEach(func() {
@@ -51,10 +54,35 @@ var _ = Describe("Migrator", func() {
 	})
 
 	Describe("Migrate", func() {
-		It("returns an empty result", func() {
-			result, err := migrator.Migrate()
+		It("notifies the watcher", func() {
+			err := migrator.Migrate()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(BeNil())
+			Expect(watcher.TableMigrationDidStartCallCount()).To(Equal(2))
+			Expect(watcher.TableMigrationDidFinishCallCount()).To(Equal(2))
+
+			expected := map[string]int64{
+				"table_with_id":    0,
+				"table_without_id": 0,
+			}
+
+			tableName, missingRows := watcher.TableMigrationDidFinishArgsForCall(0)
+			Expect(missingRows).To(Equal(expected[tableName]))
+			tableName, missingRows = watcher.TableMigrationDidFinishArgsForCall(1)
+			Expect(missingRows).To(Equal(expected[tableName]))
+		})
+
+		It("does not insert any data into the target", func() {
+			err := migrator.Migrate()
+			Expect(err).NotTo(HaveOccurred())
+
+			var count int64
+			err = mysqlRunner.DB().QueryRow("SELECT COUNT(1) from table_with_id").Scan(&count)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(count).To(BeZero())
+
+			err = mysqlRunner.DB().QueryRow("SELECT COUNT(1) from table_with_id").Scan(&count)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(count).To(BeZero())
 		})
 
 		Context("when there is compatible data in postgres in a table with an 'id' column", func() {
@@ -84,15 +112,26 @@ var _ = Describe("Migrator", func() {
 				Expect(rowsAffected).To(BeNumerically("==", 1))
 			})
 
-			It("inserts the data into the target", func() {
-				result, err := migrator.Migrate()
+			It("notifies the watcher", func() {
+				err := migrator.Migrate()
 				Expect(err).NotTo(HaveOccurred())
+				Expect(watcher.TableMigrationDidStartCallCount()).To(Equal(2))
+				Expect(watcher.TableMigrationDidFinishCallCount()).To(Equal(2))
 
-				Expect(result).To(ContainElement(pg2mysql.MigrationResult{
-					TableName:    "table_with_id",
-					RowsMigrated: 1,
-					RowsSkipped:  0,
-				}))
+				expected := map[string]int64{
+					"table_with_id":    1,
+					"table_without_id": 0,
+				}
+
+				tableName, missingRows := watcher.TableMigrationDidFinishArgsForCall(0)
+				Expect(missingRows).To(Equal(expected[tableName]))
+				tableName, missingRows = watcher.TableMigrationDidFinishArgsForCall(1)
+				Expect(missingRows).To(Equal(expected[tableName]))
+			})
+
+			It("inserts the data into the target", func() {
+				err := migrator.Migrate()
+				Expect(err).NotTo(HaveOccurred())
 
 				var id int
 				var name string
@@ -137,15 +176,26 @@ var _ = Describe("Migrator", func() {
 				Expect(rowsAffected).To(BeNumerically("==", 1))
 			})
 
-			It("inserts the data into the target", func() {
-				result, err := migrator.Migrate()
+			It("notifies the watcher", func() {
+				err := migrator.Migrate()
 				Expect(err).NotTo(HaveOccurred())
+				Expect(watcher.TableMigrationDidStartCallCount()).To(Equal(2))
+				Expect(watcher.TableMigrationDidFinishCallCount()).To(Equal(2))
 
-				Expect(result).To(ContainElement(pg2mysql.MigrationResult{
-					TableName:    "table_without_id",
-					RowsMigrated: 1,
-					RowsSkipped:  0,
-				}))
+				expected := map[string]int64{
+					"table_with_id":    0,
+					"table_without_id": 1,
+				}
+
+				tableName, missingRows := watcher.TableMigrationDidFinishArgsForCall(0)
+				Expect(missingRows).To(Equal(expected[tableName]))
+				tableName, missingRows = watcher.TableMigrationDidFinishArgsForCall(1)
+				Expect(missingRows).To(Equal(expected[tableName]))
+			})
+
+			It("inserts the data into the target", func() {
+				err := migrator.Migrate()
+				Expect(err).NotTo(HaveOccurred())
 
 				var name string
 				var ci_name string

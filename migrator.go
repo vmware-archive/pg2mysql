@@ -9,48 +9,55 @@ import (
 )
 
 type Migrator interface {
-	Migrate() ([]MigrationResult, error)
+	Migrate() error
 }
 
-func NewMigrator(src, dst DB, truncateFirst bool) Migrator {
+func NewMigrator(src, dst DB, truncateFirst bool, watcher MigratorWatcher) Migrator {
 	return &migrator{
 		src:           src,
 		dst:           dst,
 		truncateFirst: truncateFirst,
+		watcher:       watcher,
 	}
 }
 
 type migrator struct {
 	src, dst      DB
 	truncateFirst bool
+	watcher       MigratorWatcher
 }
 
-func (m *migrator) Migrate() ([]MigrationResult, error) {
+func (m *migrator) Migrate() error {
 	srcSchema, err := BuildSchema(m.src)
 	if err != nil {
-		return nil, fmt.Errorf("failed to build source schema: %s", err)
+		return fmt.Errorf("failed to build source schema: %s", err)
 	}
 
+	m.watcher.WillDisableConstraints()
 	err = m.dst.DisableConstraints()
 	if err != nil {
-		return nil, fmt.Errorf("failed to disable constraints: %s", err)
+		return fmt.Errorf("failed to disable constraints: %s", err)
 	}
+	m.watcher.DidDisableConstraints()
 
 	defer func() {
+		m.watcher.WillEnableConstraints()
 		err = m.dst.EnableConstraints()
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "failed to enable constraints: %s", err)
+			m.watcher.EnableConstraintsDidFailWithError(err)
+		} else {
+			m.watcher.EnableConstraintsDidFinish()
 		}
 	}()
 
-	var result []MigrationResult
-
 	for _, table := range srcSchema.Tables {
 		if m.truncateFirst {
+			m.watcher.WillTruncateTable(table.Name)
 			_, err := m.dst.DB().Exec(fmt.Sprintf("TRUNCATE TABLE %s", table.Name))
 			if err != nil {
-				return nil, fmt.Errorf("failed truncating: %s", err)
+				return fmt.Errorf("failed truncating: %s", err)
 			}
+			m.watcher.TruncateTableDidFinish(table.Name)
 		}
 
 		columnNamesForInsert := make([]string, len(table.Columns))
@@ -67,15 +74,17 @@ func (m *migrator) Migrate() ([]MigrationResult, error) {
 			strings.Join(placeholders, ","),
 		))
 		if err != nil {
-			return nil, fmt.Errorf("failed creating prepared statement: %s", err)
+			return fmt.Errorf("failed creating prepared statement: %s", err)
 		}
 
 		var recordsInserted int64
 
+		m.watcher.TableMigrationDidStart(table.Name)
+
 		if table.HasColumn("id") {
-			err = migrateWithIDs(m.src, m.dst, table, &recordsInserted, preparedStmt)
+			err = migrateWithIDs(m.watcher, m.src, m.dst, table, &recordsInserted, preparedStmt)
 			if err != nil {
-				return nil, fmt.Errorf("failed migrating table with ids: %s", err)
+				return fmt.Errorf("failed migrating table with ids: %s", err)
 			}
 		} else {
 			err = EachMissingRow(m.src, m.dst, table, func(scanArgs []interface{}) {
@@ -87,24 +96,18 @@ func (m *migrator) Migrate() ([]MigrationResult, error) {
 				recordsInserted++
 			})
 			if err != nil {
-				return nil, fmt.Errorf("failed migrating table without ids: %s", err)
+				return fmt.Errorf("failed migrating table without ids: %s", err)
 			}
 		}
 
-		if recordsInserted > 0 {
-			result = append(result, MigrationResult{
-				TableName:    table.Name,
-				RowsMigrated: recordsInserted,
-			})
-		}
-
-		fmt.Printf("inserted %d records into %s\n", recordsInserted, table.Name)
+		m.watcher.TableMigrationDidFinish(table.Name, recordsInserted)
 	}
 
-	return result, nil
+	return nil
 }
 
 func migrateWithIDs(
+	watcher MigratorWatcher,
 	src DB,
 	dst DB,
 	table *Table,
@@ -181,12 +184,6 @@ func migrateWithIDs(
 	}
 
 	return nil
-}
-
-type MigrationResult struct {
-	TableName    string
-	RowsMigrated int64
-	RowsSkipped  int64
 }
 
 func insert(stmt *sql.Stmt, values []interface{}) error {
