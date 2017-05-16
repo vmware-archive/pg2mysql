@@ -74,6 +74,10 @@ func (m *mySQLDB) DB() *sql.DB {
 	return m.db
 }
 
+func (m *mySQLDB) ColumnNameForSelect(name string) string {
+	return fmt.Sprintf("`%s`", name)
+}
+
 func (m *mySQLDB) EnableConstraints() error {
 	_, err := m.db.Exec("SET FOREIGN_KEY_CHECKS = 1;")
 	return err

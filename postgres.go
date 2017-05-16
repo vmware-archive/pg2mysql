@@ -74,6 +74,10 @@ func (p *postgreSQLDB) DB() *sql.DB {
 	return p.db
 }
 
+func (p *postgreSQLDB) ColumnNameForSelect(name string) string {
+	return name
+}
+
 func (p *postgreSQLDB) EnableConstraints() error {
 	panic("not implemented")
 }

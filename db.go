@@ -14,6 +14,7 @@ type DB interface {
 	GetSchemaRows() (*sql.Rows, error)
 	DisableConstraints() error
 	EnableConstraints() error
+	ColumnNameForSelect(columnName string) string
 	DB() *sql.DB
 }
 
@@ -203,20 +204,20 @@ func GetIncompatibleRowCount(db DB, src, dst *Table) (int64, error) {
 }
 
 func EachMissingRow(src, dst DB, table *Table, f func([]interface{})) error {
-	columnNamesForSelect := make([]string, len(table.Columns))
+	srcColumnNamesForSelect := make([]string, len(table.Columns))
 	columnNamesForInsert := make([]string, len(table.Columns))
 	values := make([]interface{}, len(table.Columns))
 	scanArgs := make([]interface{}, len(table.Columns))
 	colVals := make([]string, len(table.Columns))
 	for i := range table.Columns {
-		columnNamesForSelect[i] = table.Columns[i].Name
+		srcColumnNamesForSelect[i] = src.ColumnNameForSelect(table.Columns[i].Name)
 		columnNamesForInsert[i] = fmt.Sprintf("`%s`", table.Columns[i].Name)
 		scanArgs[i] = &values[i]
-		colVals[i] = fmt.Sprintf("%s <=> ?", table.Columns[i].Name)
+		colVals[i] = fmt.Sprintf("%s <=> ?", dst.ColumnNameForSelect(table.Columns[i].Name))
 	}
 
 	// select all rows in src
-	stmt := fmt.Sprintf("SELECT %s FROM %s", strings.Join(columnNamesForSelect, ","), table.Name)
+	stmt := fmt.Sprintf("SELECT %s FROM %s", strings.Join(srcColumnNamesForSelect, ","), table.Name)
 	rows, err := src.DB().Query(stmt)
 	if err != nil {
 		return fmt.Errorf("failed to select rows: %s", err)
