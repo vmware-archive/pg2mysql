@@ -242,7 +242,8 @@ func EachMissingRow(src, dst DB, table *Table, f func([]interface{})) error {
 
 			// replace the precise PostgreSQL time with a less precise MySQL-compatible time
 			if t1, ok := (*iface).(time.Time); ok {
-				scanArgs[i] = t1.Truncate(time.Second)
+				var timeArg interface{} = t1.Truncate(time.Second)
+				scanArgs[i] = &timeArg
 			}
 		}
 
