@@ -24,13 +24,13 @@ func (runner *Runner) Setup() error {
 	cmd.Stderr = &out
 	err := cmd.Run()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create database %s: %s\n%s", runner.DBName, err, out.String())
 	}
 
 	dsn := fmt.Sprintf("host=127.0.0.1 port=5432 sslmode=disable dbname=%s", runner.DBName)
 	dbConn, err := sql.Open("postgres", dsn)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open connection to database: %s", err)
 	}
 
 	runner.dbConn = dbConn
