@@ -55,14 +55,16 @@ func (runner *Runner) Setup() error {
 }
 
 func (runner *Runner) Teardown() error {
-	_, err := runner.dbConn.Exec(fmt.Sprintf("DROP DATABASE %s", runner.DBName))
-	if err != nil {
-		return err
-	}
+	if runner.dbConn != nil {
+		_, err := runner.dbConn.Exec(fmt.Sprintf("DROP DATABASE %s", runner.DBName))
+		if err != nil {
+			return err
+		}
 
-	err = runner.dbConn.Close()
-	if err != nil {
-		return err
+		err = runner.dbConn.Close()
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

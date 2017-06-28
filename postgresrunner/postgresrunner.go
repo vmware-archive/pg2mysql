@@ -44,15 +44,17 @@ func (runner *Runner) Teardown() error {
 		if err != nil {
 			return err
 		}
+
+		cmd := exec.Command("dropdb", runner.DBName)
+
+		var out bytes.Buffer
+		cmd.Stdout = &out
+		cmd.Stderr = &out
+
+		return cmd.Run()
 	}
 
-	cmd := exec.Command("dropdb", runner.DBName)
-
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	cmd.Stderr = &out
-
-	return cmd.Run()
+	return nil
 }
 
 func (runner *Runner) Truncate() error {
