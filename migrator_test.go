@@ -57,12 +57,13 @@ var _ = Describe("Migrator", func() {
 		It("notifies the watcher", func() {
 			err := migrator.Migrate()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(watcher.TableMigrationDidStartCallCount()).To(Equal(2))
-			Expect(watcher.TableMigrationDidFinishCallCount()).To(Equal(2))
+			Expect(watcher.TableMigrationDidStartCallCount()).To(Equal(3))
+			Expect(watcher.TableMigrationDidFinishCallCount()).To(Equal(3))
 
 			expected := map[string]int64{
-				"table_with_id":    0,
-				"table_without_id": 0,
+				"table_with_id":        0,
+				"table_with_string_id": 0,
+				"table_without_id":     0,
 			}
 
 			for i := 0; i < len(expected); i++ {
@@ -115,12 +116,13 @@ var _ = Describe("Migrator", func() {
 			It("notifies the watcher", func() {
 				err := migrator.Migrate()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(watcher.TableMigrationDidStartCallCount()).To(Equal(2))
-				Expect(watcher.TableMigrationDidFinishCallCount()).To(Equal(2))
+				Expect(watcher.TableMigrationDidStartCallCount()).To(Equal(3))
+				Expect(watcher.TableMigrationDidFinishCallCount()).To(Equal(3))
 
 				expected := map[string]int64{
-					"table_with_id":    1,
-					"table_without_id": 0,
+					"table_with_id":        1,
+					"table_with_string_id": 0,
+					"table_without_id":     0,
 				}
 
 				for i := 0; i < len(expected); i++ {
@@ -148,6 +150,60 @@ var _ = Describe("Migrator", func() {
 				Expect(ci_name).To(Equal("some'ci'name"))
 				Expect(created_at.Format(time.RFC1123Z)).To(Equal(currentTime.Format(time.RFC1123Z)))
 				Expect(truthiness).To(BeTrue())
+			})
+		})
+
+		Context("when there is compatible data in postgres in a table with a string 'id' column", func() {
+			BeforeEach(func() {
+				stmt := `
+				INSERT INTO table_with_string_id (
+					id,
+					name
+				) VALUES (
+					$$77add94c-be06-47db-9420-b4fd840396cd$$,
+					$$some-name$$
+				)`
+				result, err := pgRunner.DB().Exec(stmt)
+				Expect(err).NotTo(HaveOccurred())
+				rowsAffected, err := result.RowsAffected()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(rowsAffected).To(BeNumerically("==", 1))
+			})
+
+			It("notifies the watcher", func() {
+				err := migrator.Migrate()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(watcher.TableMigrationDidStartCallCount()).To(Equal(3))
+				Expect(watcher.TableMigrationDidFinishCallCount()).To(Equal(3))
+
+				expected := map[string]int64{
+					"table_with_id":        0,
+					"table_with_string_id": 1,
+					"table_without_id":     0,
+				}
+
+				for i := 0; i < len(expected); i++ {
+					tableName, missingRows := watcher.TableMigrationDidFinishArgsForCall(i)
+					Expect(missingRows).To(Equal(expected[tableName]), fmt.Sprintf("unexpected result for %s", tableName))
+				}
+			})
+
+			It("inserts the data into the target", func() {
+				err := migrator.Migrate()
+				Expect(err).NotTo(HaveOccurred())
+
+				var id string
+				var name string
+
+				stmt := "SELECT id, name FROM table_with_string_id WHERE id = '77add94c-be06-47db-9420-b4fd840396cd'"
+				err = mysqlRunner.DB().QueryRow(stmt).Scan(&id, &name)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(id).To(Equal("77add94c-be06-47db-9420-b4fd840396cd"))
+				Expect(name).To(Equal("some-name"))
+
+				err = migrator.Migrate()
+				Expect(err).NotTo(HaveOccurred())
 			})
 		})
 
@@ -179,12 +235,13 @@ var _ = Describe("Migrator", func() {
 			It("notifies the watcher", func() {
 				err := migrator.Migrate()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(watcher.TableMigrationDidStartCallCount()).To(Equal(2))
-				Expect(watcher.TableMigrationDidFinishCallCount()).To(Equal(2))
+				Expect(watcher.TableMigrationDidStartCallCount()).To(Equal(3))
+				Expect(watcher.TableMigrationDidFinishCallCount()).To(Equal(3))
 
 				expected := map[string]int64{
-					"table_with_id":    0,
-					"table_without_id": 1,
+					"table_with_id":        0,
+					"table_with_string_id": 0,
+					"table_without_id":     1,
 				}
 
 				for i := 0; i < len(expected); i++ {

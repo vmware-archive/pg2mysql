@@ -128,9 +128,9 @@ func migrateWithIDs(
 		return fmt.Errorf("failed to select id from rows: %s", err)
 	}
 
-	var dstIDs []string
+	var dstIDs []interface{}
 	for rows.Next() {
-		var id string
+		var id interface{}
 		if err = rows.Scan(&id); err != nil {
 			return fmt.Errorf("failed to scan id from row: %s", err)
 		}
@@ -153,10 +153,15 @@ func migrateWithIDs(
 	)
 
 	if len(dstIDs) > 0 {
-		stmt = fmt.Sprintf("%s WHERE id NOT IN (%s)", stmt, strings.Join(dstIDs, ","))
+		placeholders := make([]string, len(dstIDs))
+		for i := range dstIDs {
+			placeholders[i] = fmt.Sprintf("$%d", i+1)
+		}
+
+		stmt = fmt.Sprintf("%s WHERE id NOT IN (%s)", stmt, strings.Join(placeholders, ","))
 	}
 
-	rows, err = src.DB().Query(stmt)
+	rows, err = src.DB().Query(stmt, dstIDs...)
 	if err != nil {
 		return fmt.Errorf("failed to select rows: %s", err)
 	}

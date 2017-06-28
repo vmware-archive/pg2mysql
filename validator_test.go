@@ -50,7 +50,7 @@ var _ = Describe("Validator", func() {
 		It("returns a result", func() {
 			result, err := validator.Validate()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(HaveLen(2))
+			Expect(result).To(HaveLen(3))
 			Expect(result).To(ContainElement(pg2mysql.ValidationResult{
 				TableName: "table_with_id",
 			}))
@@ -72,7 +72,7 @@ var _ = Describe("Validator", func() {
 			It("returns a result", func() {
 				result, err := validator.Validate()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(HaveLen(2))
+				Expect(result).To(HaveLen(3))
 				Expect(result).To(ContainElement(pg2mysql.ValidationResult{
 					TableName: "table_with_id",
 				}))
@@ -96,7 +96,7 @@ var _ = Describe("Validator", func() {
 				result, err := validator.Validate()
 				Expect(err).NotTo(HaveOccurred())
 
-				Expect(result).To(HaveLen(2))
+				Expect(result).To(HaveLen(3))
 				Expect(result).To(ContainElement(pg2mysql.ValidationResult{
 					TableName:            "table_with_id",
 					IncompatibleRowIDs:   []int{3},
@@ -121,7 +121,7 @@ var _ = Describe("Validator", func() {
 			It("returns a result", func() {
 				result, err := validator.Validate()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(result).To(HaveLen(2))
+				Expect(result).To(HaveLen(3))
 				Expect(result).To(ContainElement(pg2mysql.ValidationResult{
 					TableName: "table_with_id",
 				}))

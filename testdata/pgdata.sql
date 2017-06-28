@@ -9,6 +9,11 @@ CREATE TABLE IF NOT EXISTS table_with_id (
   truthiness bool NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS table_with_string_id (
+  id varchar(36) NOT NULL,
+  name varchar(255) NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS table_without_id (
   name text NOT NULL,
   null_name text,

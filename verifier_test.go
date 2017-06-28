@@ -56,7 +56,7 @@ var _ = Describe("Verifier", func() {
 		It("notifies the watcher", func() {
 			err := verifier.Verify()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(2))
+			Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(3))
 			_, missingRows := watcher.TableVerificationDidFinishArgsForCall(0)
 			Expect(missingRows).To(BeZero())
 			_, missingRows = watcher.TableVerificationDidFinishArgsForCall(1)
@@ -75,11 +75,12 @@ var _ = Describe("Verifier", func() {
 			It("notifies the watcher", func() {
 				err := verifier.Verify()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(2))
+				Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(3))
 
 				expected := map[string]int64{
-					"table_with_id":    1,
-					"table_without_id": 0,
+					"table_with_id":        1,
+					"table_with_string_id": 0,
+					"table_without_id":     0,
 				}
 
 				for i := 0; i < len(expected); i++ {
@@ -115,11 +116,12 @@ var _ = Describe("Verifier", func() {
 			It("notifies the watcher", func() {
 				err := verifier.Verify()
 				Expect(err).NotTo(HaveOccurred())
-				Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(2))
+				Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(3))
 
 				expected := map[string]int64{
-					"table_with_id":    0,
-					"table_without_id": 0,
+					"table_with_id":        0,
+					"table_with_string_id": 0,
+					"table_without_id":     0,
 				}
 
 				for i := 0; i < len(expected); i++ {
