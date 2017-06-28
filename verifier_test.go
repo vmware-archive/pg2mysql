@@ -1,6 +1,7 @@
 package pg2mysql_test
 
 import (
+	"fmt"
 	"time"
 
 	. "github.com/onsi/ginkgo"
@@ -81,11 +82,10 @@ var _ = Describe("Verifier", func() {
 					"table_without_id": 0,
 				}
 
-				tableName, missingRows := watcher.TableVerificationDidFinishArgsForCall(0)
-				Expect(missingRows).To(Equal(expected[tableName]))
-
-				tableName, missingRows = watcher.TableVerificationDidFinishArgsForCall(1)
-				Expect(missingRows).To(Equal(expected[tableName]))
+				for i := 0; i < len(expected); i++ {
+					tableName, missingRows := watcher.TableVerificationDidFinishArgsForCall(i)
+					Expect(missingRows).To(Equal(expected[tableName]), fmt.Sprintf("unexpected result for %s", tableName))
+				}
 			})
 		})
 
@@ -122,11 +122,10 @@ var _ = Describe("Verifier", func() {
 					"table_without_id": 0,
 				}
 
-				tableName, missingRows := watcher.TableVerificationDidFinishArgsForCall(0)
-				Expect(missingRows).To(Equal(expected[tableName]))
-
-				tableName, missingRows = watcher.TableVerificationDidFinishArgsForCall(1)
-				Expect(missingRows).To(Equal(expected[tableName]))
+				for i := 0; i < len(expected); i++ {
+					tableName, missingRows := watcher.TableVerificationDidFinishArgsForCall(i)
+					Expect(missingRows).To(Equal(expected[tableName]), fmt.Sprintf("unexpected result for %s", tableName))
+				}
 			})
 		})
 	})

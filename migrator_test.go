@@ -65,10 +65,10 @@ var _ = Describe("Migrator", func() {
 				"table_without_id": 0,
 			}
 
-			tableName, missingRows := watcher.TableMigrationDidFinishArgsForCall(0)
-			Expect(missingRows).To(Equal(expected[tableName]))
-			tableName, missingRows = watcher.TableMigrationDidFinishArgsForCall(1)
-			Expect(missingRows).To(Equal(expected[tableName]))
+			for i := 0; i < len(expected); i++ {
+				tableName, missingRows := watcher.TableMigrationDidFinishArgsForCall(i)
+				Expect(missingRows).To(Equal(expected[tableName]), fmt.Sprintf("unexpected result for %s", tableName))
+			}
 		})
 
 		It("does not insert any data into the target", func() {
@@ -123,10 +123,10 @@ var _ = Describe("Migrator", func() {
 					"table_without_id": 0,
 				}
 
-				tableName, missingRows := watcher.TableMigrationDidFinishArgsForCall(0)
-				Expect(missingRows).To(Equal(expected[tableName]))
-				tableName, missingRows = watcher.TableMigrationDidFinishArgsForCall(1)
-				Expect(missingRows).To(Equal(expected[tableName]))
+				for i := 0; i < len(expected); i++ {
+					tableName, missingRows := watcher.TableMigrationDidFinishArgsForCall(i)
+					Expect(missingRows).To(Equal(expected[tableName]), fmt.Sprintf("unexpected result for %s", tableName))
+				}
 			})
 
 			It("inserts the data into the target", func() {
@@ -187,10 +187,10 @@ var _ = Describe("Migrator", func() {
 					"table_without_id": 1,
 				}
 
-				tableName, missingRows := watcher.TableMigrationDidFinishArgsForCall(0)
-				Expect(missingRows).To(Equal(expected[tableName]))
-				tableName, missingRows = watcher.TableMigrationDidFinishArgsForCall(1)
-				Expect(missingRows).To(Equal(expected[tableName]))
+				for i := 0; i < len(expected); i++ {
+					tableName, missingRows := watcher.TableMigrationDidFinishArgsForCall(i)
+					Expect(missingRows).To(Equal(expected[tableName]), fmt.Sprintf("unexpected result for %s", tableName))
+				}
 			})
 
 			It("inserts the data into the target", func() {
