@@ -59,6 +59,7 @@ func (p *postgreSQLDB) GetSchemaRows() (*sql.Rows, error) {
 				 character_maximum_length
 	FROM   information_schema.columns
 	WHERE  table_schema = 'public'
+	             AND is_updatable = 'YES'
 				 AND table_name NOT IN ('schema_migrations')
 				 AND table_catalog = $1`
 
