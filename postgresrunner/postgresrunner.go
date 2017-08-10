@@ -59,10 +59,13 @@ func (runner *Runner) Teardown() error {
 
 func (runner *Runner) Truncate() error {
 	stmt := `
-	SELECT table_name
-	FROM   information_schema.columns
-	WHERE  table_schema = 'public'
-				 AND table_catalog = $1`
+	SELECT t1.table_name
+	FROM   information_schema.columns t1
+	       JOIN information_schema.tables t2
+	         ON t2.table_name = t1.table_name
+	            AND t2.table_type = 'BASE TABLE'
+	WHERE  t1.table_schema = 'public'
+	       AND t1.table_catalog = $1`
 
 	rows, err := runner.dbConn.Query(stmt, runner.DBName)
 	if err != nil {

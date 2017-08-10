@@ -53,14 +53,17 @@ func (p *postgreSQLDB) Close() error {
 
 func (p *postgreSQLDB) GetSchemaRows() (*sql.Rows, error) {
 	stmt := `
-	SELECT table_name,
-				 column_name,
-				 data_type,
-				 character_maximum_length
-	FROM   information_schema.columns
-	WHERE  table_schema = 'public'
-				 AND table_name NOT IN ('schema_migrations')
-				 AND table_catalog = $1`
+	SELECT t1.table_name,
+	       t1.column_name,
+	       t1.data_type,
+	       t1.character_maximum_length
+	FROM   information_schema.columns t1
+	       JOIN information_schema.tables t2
+	         ON t2.table_name = t1.table_name
+	            AND t2.table_type = 'BASE TABLE'
+	WHERE  t1.table_schema = 'public'
+	       AND t1.table_name NOT IN ('schema_migrations')
+	       AND t1.table_catalog = $1`
 
 	rows, err := p.db.Query(stmt, p.dbName)
 	if err != nil {

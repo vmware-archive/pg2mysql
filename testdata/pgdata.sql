@@ -21,3 +21,9 @@ CREATE TABLE IF NOT EXISTS table_without_id (
   created_at timestamp without time zone DEFAULT now() NOT NULL,
   truthiness bool NOT NULL
 );
+
+CREATE OR replace VIEW some_view
+AS
+  SELECT id,
+         name
+  FROM   table_with_id
