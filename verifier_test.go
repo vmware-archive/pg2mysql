@@ -57,10 +57,10 @@ var _ = Describe("Verifier", func() {
 			err := verifier.Verify()
 			Expect(err).NotTo(HaveOccurred())
 			Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(3))
-			_, missingRows := watcher.TableVerificationDidFinishArgsForCall(0)
-			Expect(missingRows).To(BeZero())
-			_, missingRows = watcher.TableVerificationDidFinishArgsForCall(1)
-			Expect(missingRows).To(BeZero())
+			for i := 0; i < watcher.TableVerificationDidFinishCallCount(); i++ {
+				_, missingRows := watcher.TableVerificationDidFinishArgsForCall(i)
+				Expect(missingRows).To(BeZero())
+			}
 		})
 
 		Context("when there is data in postgres that is not in mysql", func() {
