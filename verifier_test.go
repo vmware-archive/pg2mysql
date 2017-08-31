@@ -58,18 +58,17 @@ var _ = Describe("Verifier", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(watcher.TableVerificationDidFinishCallCount()).To(Equal(3))
 			for i := 0; i < watcher.TableVerificationDidFinishCallCount(); i++ {
-				_, missingRows := watcher.TableVerificationDidFinishArgsForCall(i)
+				_, missingRows, missingIDs := watcher.TableVerificationDidFinishArgsForCall(i)
 				Expect(missingRows).To(BeZero())
+				Expect(missingIDs).To(BeNil())
 			}
 		})
 
 		Context("when there is data in postgres that is not in mysql", func() {
+			var lastInsertID int
 			BeforeEach(func() {
-				result, err := pgRunner.DB().Exec("INSERT INTO table_with_id (id, name, ci_name, created_at, truthiness) VALUES (3, 'some-name', 'some-ci-name', now(), false);")
+				err := pgRunner.DB().QueryRow("INSERT INTO table_with_id (id, name, ci_name, created_at, truthiness) VALUES (3, 'some-name', 'some-ci-name', now(), false) RETURNING id;").Scan(&lastInsertID)
 				Expect(err).NotTo(HaveOccurred())
-				rowsAffected, err := result.RowsAffected()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(rowsAffected).To(BeNumerically("==", 1))
 			})
 
 			It("notifies the watcher", func() {
@@ -84,8 +83,13 @@ var _ = Describe("Verifier", func() {
 				}
 
 				for i := 0; i < len(expected); i++ {
-					tableName, missingRows := watcher.TableVerificationDidFinishArgsForCall(i)
+					tableName, missingRows, missingIDs := watcher.TableVerificationDidFinishArgsForCall(i)
 					Expect(missingRows).To(Equal(expected[tableName]), fmt.Sprintf("unexpected result for %s", tableName))
+					if tableName == "table_with_id" {
+						Expect(missingIDs).To(Equal([]string{fmt.Sprintf("%d", lastInsertID)}))
+					} else {
+						Expect(missingIDs).To(BeNil())
+					}
 				}
 			})
 		})
@@ -125,8 +129,9 @@ var _ = Describe("Verifier", func() {
 				}
 
 				for i := 0; i < len(expected); i++ {
-					tableName, missingRows := watcher.TableVerificationDidFinishArgsForCall(i)
+					tableName, missingRows, missingIDs := watcher.TableVerificationDidFinishArgsForCall(i)
 					Expect(missingRows).To(Equal(expected[tableName]), fmt.Sprintf("unexpected result for %s", tableName))
+					Expect(missingIDs).To(BeNil())
 				}
 			})
 		})

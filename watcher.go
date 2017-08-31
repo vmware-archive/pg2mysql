@@ -1,12 +1,15 @@
 package pg2mysql
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 //go:generate counterfeiter . VerifierWatcher
 
 type VerifierWatcher interface {
 	TableVerificationDidStart(tableName string)
-	TableVerificationDidFinish(tableName string, missingRows int64)
+	TableVerificationDidFinish(tableName string, missingRows int64, missingIDs []string)
 	TableVerificationDidFinishWithError(tableName string, err error)
 }
 
@@ -43,12 +46,15 @@ func (s *StdoutPrinter) TableVerificationDidStart(tableName string) {
 	fmt.Printf("Verifying table %s...", tableName)
 }
 
-func (s *StdoutPrinter) TableVerificationDidFinish(tableName string, missingRows int64) {
+func (s *StdoutPrinter) TableVerificationDidFinish(tableName string, missingRows int64, missingIDs []string) {
 	if missingRows != 0 {
 		if missingRows == 1 {
 			fmt.Println("\n\tFAILED: 1 row missing")
 		} else {
 			fmt.Printf("\n\tFAILED: %d rows missing\n", missingRows)
+		}
+		if missingIDs != nil {
+			fmt.Printf("\tMissing IDs: %v\n", strings.Join(missingIDs, ","))
 		}
 	} else {
 		s.done()

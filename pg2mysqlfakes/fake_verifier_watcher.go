@@ -13,11 +13,12 @@ type FakeVerifierWatcher struct {
 	tableVerificationDidStartArgsForCall []struct {
 		tableName string
 	}
-	TableVerificationDidFinishStub        func(tableName string, missingRows int64)
+	TableVerificationDidFinishStub        func(tableName string, missingRows int64, missingIDs []string)
 	tableVerificationDidFinishMutex       sync.RWMutex
 	tableVerificationDidFinishArgsForCall []struct {
 		tableName   string
 		missingRows int64
+		missingIDs  []string
 	}
 	TableVerificationDidFinishWithErrorStub        func(tableName string, err error)
 	tableVerificationDidFinishWithErrorMutex       sync.RWMutex
@@ -53,16 +54,22 @@ func (fake *FakeVerifierWatcher) TableVerificationDidStartArgsForCall(i int) str
 	return fake.tableVerificationDidStartArgsForCall[i].tableName
 }
 
-func (fake *FakeVerifierWatcher) TableVerificationDidFinish(tableName string, missingRows int64) {
+func (fake *FakeVerifierWatcher) TableVerificationDidFinish(tableName string, missingRows int64, missingIDs []string) {
+	var missingIDsCopy []string
+	if missingIDs != nil {
+		missingIDsCopy = make([]string, len(missingIDs))
+		copy(missingIDsCopy, missingIDs)
+	}
 	fake.tableVerificationDidFinishMutex.Lock()
 	fake.tableVerificationDidFinishArgsForCall = append(fake.tableVerificationDidFinishArgsForCall, struct {
 		tableName   string
 		missingRows int64
-	}{tableName, missingRows})
-	fake.recordInvocation("TableVerificationDidFinish", []interface{}{tableName, missingRows})
+		missingIDs  []string
+	}{tableName, missingRows, missingIDsCopy})
+	fake.recordInvocation("TableVerificationDidFinish", []interface{}{tableName, missingRows, missingIDsCopy})
 	fake.tableVerificationDidFinishMutex.Unlock()
 	if fake.TableVerificationDidFinishStub != nil {
-		fake.TableVerificationDidFinishStub(tableName, missingRows)
+		fake.TableVerificationDidFinishStub(tableName, missingRows, missingIDs)
 	}
 }
 
@@ -72,10 +79,10 @@ func (fake *FakeVerifierWatcher) TableVerificationDidFinishCallCount() int {
 	return len(fake.tableVerificationDidFinishArgsForCall)
 }
 
-func (fake *FakeVerifierWatcher) TableVerificationDidFinishArgsForCall(i int) (string, int64) {
+func (fake *FakeVerifierWatcher) TableVerificationDidFinishArgsForCall(i int) (string, int64, []string) {
 	fake.tableVerificationDidFinishMutex.RLock()
 	defer fake.tableVerificationDidFinishMutex.RUnlock()
-	return fake.tableVerificationDidFinishArgsForCall[i].tableName, fake.tableVerificationDidFinishArgsForCall[i].missingRows
+	return fake.tableVerificationDidFinishArgsForCall[i].tableName, fake.tableVerificationDidFinishArgsForCall[i].missingRows, fake.tableVerificationDidFinishArgsForCall[i].missingIDs
 }
 
 func (fake *FakeVerifierWatcher) TableVerificationDidFinishWithError(tableName string, err error) {

@@ -29,7 +29,13 @@ func (v *verifier) Verify() error {
 		v.watcher.TableVerificationDidStart(table.Name)
 
 		var missingRows int64
+		var missingIDs []string
 		err = EachMissingRow(v.src, v.dst, table, func(scanArgs []interface{}) {
+			if colIndex, _, getColErr := table.GetColumn("id"); getColErr == nil {
+				if colID, ok := scanArgs[colIndex].(*interface{}); ok {
+					missingIDs = append(missingIDs, fmt.Sprintf("%v", *colID))
+				}
+			}
 			missingRows++
 		})
 		if err != nil {
@@ -37,7 +43,7 @@ func (v *verifier) Verify() error {
 			continue
 		}
 
-		v.watcher.TableVerificationDidFinish(table.Name, missingRows)
+		v.watcher.TableVerificationDidFinish(table.Name, missingRows, missingIDs)
 	}
 
 	return nil

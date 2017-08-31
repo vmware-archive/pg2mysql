@@ -36,18 +36,18 @@ type Table struct {
 }
 
 func (t *Table) HasColumn(name string) bool {
-	_, err := t.GetColumn(name)
+	_, _, err := t.GetColumn(name)
 	return err == nil
 }
 
-func (t *Table) GetColumn(name string) (*Column, error) {
-	for _, column := range t.Columns {
+func (t *Table) GetColumn(name string) (int, *Column, error) {
+	for i, column := range t.Columns {
 		if column.Name == name {
-			return column, nil
+			return i, column, nil
 		}
 	}
 
-	return nil, fmt.Errorf("column '%s' not found", name)
+	return -1, nil, fmt.Errorf("column '%s' not found", name)
 }
 
 type Column struct {
@@ -123,7 +123,7 @@ func BuildSchema(db DB) (*Schema, error) {
 func GetIncompatibleColumns(src, dst *Table) ([]*Column, error) {
 	var incompatibleColumns []*Column
 	for _, dstColumn := range dst.Columns {
-		srcColumn, err := src.GetColumn(dstColumn.Name)
+		_, srcColumn, err := src.GetColumn(dstColumn.Name)
 		if err != nil {
 			return nil, fmt.Errorf("failed to find column '%s/%s' in source schema: %s", dst.Name, dstColumn.Name, err)
 		}
