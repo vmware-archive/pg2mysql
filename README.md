@@ -76,3 +76,29 @@ inserted 0 records into route_bindings
 ```
 
 _Note: The `--truncate` flag will truncate each table prior to copying data over._
+
+Run the verifier after migration to confirm the data has been migrated as expected:
+
+```
+$ pg2mysql -c config.yml verify
+Verifying table spaces_developers...OK
+Verifying table security_groups_spaces...OK
+Verifying table service_bindings...OK
+Verifying table droplets...
+  FAILED: 1 row missing
+  Missing IDs: 1,3,5
+Verifying table organizations...OK
+Verifying table lockings...OK
+Verifying table service_dashboard_clients...OK
+Verifying table route_bindings...OK
+```
+
+Verify does an exact comparison (except for timestamps; see _Note_) of the
+contents of each row of each table in PostgreSQL to see that a matching row
+exists in MySQL.
+
+_Note: The verify command assumes that the precise PostgreSQL timestamps are
+truncated when doing the migration over to MySQL. However, it has been found
+that this behavior is not consistent with all forms of MySQL. Official MySQL
+rounds the timestamps whereas MariaDB truncates. A PR to intelligently support
+both would be happily received._
