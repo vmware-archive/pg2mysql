@@ -15,6 +15,8 @@ func (c *ValidateCommand) Execute([]string) error {
 		PG2MySQL.Config.MySQL.Password,
 		PG2MySQL.Config.MySQL.Host,
 		PG2MySQL.Config.MySQL.Port,
+		PG2MySQL.Config.MySQL.Charset,
+		PG2MySQL.Config.MySQL.Collation,
 	)
 
 	err := mysql.Open()

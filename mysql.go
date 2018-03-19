@@ -13,7 +13,17 @@ func NewMySQLDB(
 	password string,
 	host string,
 	port int,
+	charset string,
+	collation string,
 ) DB {
+	if (charset == "") {
+		charset = "utf8"
+	}
+
+	if (collation == "") {
+		collation = "utf8_general_ci"
+	}
+
 	config := mysql.Config{
 		User:            username,
 		Passwd:          password,
@@ -22,7 +32,8 @@ func NewMySQLDB(
 		Addr:            fmt.Sprintf("%s:%d", host, port),
 		MultiStatements: true,
 		Params: map[string]string{
-			"charset":   "utf8",
+			"charset":   charset,
+			"collation": collation,
 			"parseTime": "True",
 		},
 	}
